@@ -1,0 +1,20 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      npm_config_registry: "https://registry.npmjs.org/"
+      npm_config_proxy: ""
+      npm_config_https_proxy: ""
+    command: npm run dev -- -H 0.0.0.0 -p 3000
+
+volumes:
+  node_modules:

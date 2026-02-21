@@ -1,0 +1,2 @@
+-- Run with: npx prisma migrate dev --name init
+-- Placeholder migration script for environments where migrations are executed manually.

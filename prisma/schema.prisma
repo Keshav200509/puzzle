@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  image        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  dailyScores  DailyScore[]
+  levelScores  LevelScore[]
+}
+
+model DailyScore {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  moves     Int
+  hintsUsed Int
+  score     Int
+  stars     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+}
+
+model LevelScore {
+  id        String   @id @default(cuid())
+  userId    String
+  level     Int
+  moves     Int
+  hintsUsed Int
+  score     Int
+  stars     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, level])
+  @@index([level])
+}
