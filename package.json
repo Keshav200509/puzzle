@@ -1,0 +1,39 @@
+{
+  "name": "logic-looper",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run lint && npm test && npm run build",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "test:e2e": "playwright test -c playwright.config.ts e2e/core.spec.ts",
+    "test:e2e:env": "playwright test -c playwright.config.ts e2e/env-gated.spec.ts",
+    "preflight": "node scripts/preflight.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "idb": "^8.0.0",
+    "next": "14.2.4",
+    "next-auth": "^4.24.13",
+    "prisma": "^5.22.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "@playwright/test": "^1.55.0"
+  }
+}
