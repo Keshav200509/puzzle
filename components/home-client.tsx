@@ -37,8 +37,8 @@ export function HomeClient() {
       <header className="panel dashboard-header">
         <TheGridLogo size={72} />
         <div>
-          <h1 style={{ margin: 0 }}>Commander, welcome back.</h1>
-          <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Today&apos;s challenge: {today}</p>
+          <h1 style={{ margin: 0 }}>Command Center</h1>
+          <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Daily mission board: {today}</p>
           <div className="action-row" style={{ marginTop: 8 }}>
             {session ? (
               <>
@@ -53,15 +53,22 @@ export function HomeClient() {
       </header>
 
       <section className="panel hero-card">
-        <h2 style={{ marginTop: 0 }}>Daily Puzzle</h2>
-        <p>Slide carved tunnel blocks and connect START to END in the fewest moves.</p>
-        <Link href="/play" className="wood-btn">Play Now</Link>
+        <h2 style={{ marginTop: 0 }}>Game Workflow</h2>
+        <div className="cover-flow">
+          <article><strong>Mission</strong><span>Choose Daily or Campaign level.</span></article>
+          <article><strong>Play</strong><span>Slide pieces to create a full tunnel.</span></article>
+          <article><strong>Progress</strong><span>Stars unlock harder levels.</span></article>
+        </div>
+        <div className="action-row">
+          <Link href="/play" className="wood-btn">Play Daily</Link>
+          <Link href="/levels" className="ghost-btn">Open Campaign</Link>
+        </div>
       </section>
 
       <section className="dashboard-grid">
         <article className="panel stat-card"><h3>🔥 Current Streak</h3><p>{streak} days</p></article>
         <article className="panel stat-card"><h3>🌟 Best Streak</h3><p>{bestStreak} days</p></article>
-        <article className="panel stat-card"><h3>🧱 Level Mode</h3><p>Next level: {nextLevel}</p><Link href="/levels" className="ghost-btn">Open Levels</Link></article>
+        <article className="panel stat-card"><h3>🧱 Campaign</h3><p>Next level: {nextLevel}</p><Link href="/levels" className="ghost-btn">Continue</Link></article>
         <article className="panel stat-card"><h3>🎁 Rewards</h3><p>{starCount} stars collected</p><div className="progress-track"><span style={{ width: `${Math.min(100, starCount * 4)}%` }} /></div></article>
       </section>
 
