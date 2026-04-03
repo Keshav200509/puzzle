@@ -40,7 +40,7 @@ function tileSvg(tile: Tile) {
           const p = EDGE[edge as Direction];
           return <circle key={edge} cx={p.x} cy={p.y} r="17" fill="#111827" />;
         })}
-        <text x="50" y="70" fontSize="18" textAnchor="middle" fill="#fef3c7" fontWeight="700">{tile.kind === 'start' ? 'START' : 'END'}</text>
+        <text x="50" y="70" fontSize="15" textAnchor="middle" fill="#fef3c7" fontWeight="700">{tile.kind === 'start' ? 'START' : 'END'}</text>
       </svg>
     );
   }
@@ -90,59 +90,47 @@ export function PipeGridBoard({
     [level]
   );
 
-  const pathPoints = path.map((point) => `${point.col * 80 + 40},${point.row * 80 + 40}`).join(' ');
+  const unit = 100;
+  const pathPoints = path.map((point) => `${point.col * unit + unit / 2},${point.row * unit + unit / 2}`).join(' ');
 
   return (
-    <div style={{ position: 'relative', width: 'min(96vw, 560px)', marginInline: 'auto' }}>
-      <p className="muted" style={{ marginBottom: 8 }}>Objective: Slide tiles and connect START ➜ END in as few moves as possible.</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${level.size}, minmax(56px, 1fr))`,
-          gap: 8,
-          background: '#6b3f20',
-          padding: 10,
-          borderRadius: 14,
-          border: '2px solid #b18a56'
-        }}
-      >
-        {cells.map(({ tile, rowIndex, colIndex, canMove }) => (
-          <button
-            key={`${rowIndex}-${colIndex}-${tile.id}`}
-            type="button"
-            disabled={!canMove}
-            onClick={() => onSlide({ row: rowIndex, col: colIndex })}
-            style={{
-              height: 72,
-              padding: 0,
-              overflow: 'hidden',
-              borderRadius: 10,
-              border: tile.locked ? '2px solid #94a3b8' : '1px solid #78350f',
-              background: tile.kind === 'empty' ? 'rgba(20,20,20,.35)' : '#9a5e2f',
-              cursor: canMove ? 'pointer' : 'default',
-              boxShadow: canMove ? '0 0 0 2px rgba(251,191,36,.6) inset' : undefined,
-              transition: 'transform .16s ease'
-            }}
-            aria-label={`tile-${rowIndex}-${colIndex}`}
-          >
-            {tileSvg(tile)}
-          </button>
-        ))}
-      </div>
+    <div className="pipe-board-shell">
+      <p className="muted pipe-objective">Objective: Slide tiles and connect START ➜ END in as few moves as possible.</p>
+      <div className="pipe-grid-wrap">
+        <div
+          className="pipe-grid"
+          style={{
+            gridTemplateColumns: `repeat(${level.size}, minmax(54px, 1fr))`
+          }}
+        >
+          {cells.map(({ tile, rowIndex, colIndex, canMove }) => (
+            <button
+              key={`${rowIndex}-${colIndex}-${tile.id}`}
+              type="button"
+              disabled={!canMove}
+              onClick={() => onSlide({ row: rowIndex, col: colIndex })}
+              className={`pipe-tile ${tile.kind === 'empty' ? 'empty' : ''} ${tile.locked ? 'locked' : ''} ${canMove ? 'movable' : ''}`}
+              aria-label={`tile-${rowIndex}-${colIndex}`}
+            >
+              {tileSvg(tile)}
+            </button>
+          ))}
+        </div>
 
-      {path.length > 1 && (
-        <svg width="100%" height="100%" viewBox="0 0 400 400" style={{ position: 'absolute', inset: 10, pointerEvents: 'none' }}>
-          <polyline
-            className="path-glow"
-            points={pathPoints}
-            fill="none"
-            stroke="rgba(250,204,21,.75)"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )}
+        {path.length > 1 && (
+          <svg width="100%" height="100%" viewBox={`0 0 ${level.size * unit} ${level.size * unit}`} className="pipe-path-overlay">
+            <polyline
+              className="path-glow"
+              points={pathPoints}
+              fill="none"
+              stroke="rgba(250,204,21,.88)"
+              strokeWidth="14"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </div>
     </div>
   );
 }
