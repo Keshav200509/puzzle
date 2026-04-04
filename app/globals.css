@@ -449,7 +449,6 @@ a { color: inherit; text-decoration: none; }
 @media (min-width: 700px) {
   .cover-flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-
 .target-strip {
   display: flex;
   flex-wrap: wrap;
