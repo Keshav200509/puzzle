@@ -15,9 +15,11 @@ export function HomeClient() {
   const [levelRuns, setLevelRuns] = useState(0);
   const [starCount, setStarCount] = useState(0);
   const { data: session } = useSession();
-  const today = formatDateKey(new Date());
+  const [today, setToday] = useState('');
 
   useEffect(() => {
+    setToday(formatDateKey(new Date()));
+
     getAllDailyActivity().then((items) => {
       const map = Object.fromEntries(items.map((item) => [item.date, { solved: item.solved }]));
       setStreak(calculateStreak(map));

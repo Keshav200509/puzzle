@@ -29,13 +29,7 @@ function pulseFeedback(pattern: number | number[]) {
 
 export function PlayClient() {
   const { data: session } = useSession();
-  const [dayKey, setDayKey] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const forcedDay = new URLSearchParams(window.location.search).get('day');
-      if (forcedDay) return forcedDay;
-    }
-    return formatDateKey(new Date());
-  });
+  const [dayKey, setDayKey] = useState('');
   const [level, setLevel] = useState<PipeGridLevel | null>(null);
   const [moves, setMoves] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -81,6 +75,12 @@ export function PlayClient() {
   }
 
   useEffect(() => {
+    const forcedDay = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('day') : null;
+    setDayKey(forcedDay ?? formatDateKey(new Date()));
+  }, []);
+
+  useEffect(() => {
+    if (!dayKey) return;
     let cancelled = false;
     loadForDay(dayKey).then(async () => {
       if (cancelled) return;
@@ -95,6 +95,7 @@ export function PlayClient() {
   }, [dayKey]);
 
   useEffect(() => {
+    if (!dayKey) return;
     const id = setInterval(() => {
       if (hasDayRolledOver(dayKey)) setDayKey(formatDateKey(new Date()));
     }, 15000);
@@ -196,7 +197,7 @@ export function PlayClient() {
     return `${mins}:${secs}`;
   }, [elapsedSeconds]);
 
-  if (!level) return <main className="page-shell game-page">Loading today&apos;s board…</main>;
+  if (!dayKey || !level) return <main className="page-shell game-page">Loading today&apos;s board…</main>;
 
   return (
     <main className="page-shell game-page">
