@@ -2,12 +2,19 @@ import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 
+function hasValue(input?: string | null) {
+  if (!input) return false;
+  const value = input.trim();
+  if (!value) return false;
+  return value !== 'undefined' && value !== 'null';
+}
+
 export function isGoogleAuthConfigured() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  return hasValue(process.env.GOOGLE_CLIENT_ID) && hasValue(process.env.GOOGLE_CLIENT_SECRET);
 }
 
 export function isNextAuthConfigured() {
-  return Boolean(process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_URL);
+  return hasValue(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET) && hasValue(process.env.NEXTAUTH_URL);
 }
 
 const providers: NextAuthOptions['providers'] = [

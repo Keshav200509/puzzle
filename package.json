@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -14,7 +14,8 @@
     "prisma:migrate": "prisma migrate deploy",
     "test:e2e": "playwright test -c playwright.config.ts e2e/core.spec.ts",
     "test:e2e:env": "playwright test -c playwright.config.ts e2e/env-gated.spec.ts",
-    "preflight": "node scripts/preflight.mjs"
+    "preflight": "node scripts/preflight.mjs",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
