@@ -21,15 +21,16 @@ const SECRET = 'logic-looper-v1';
 const PUZZLE_TYPE = 'pipe-grid';
 const HINT_LIMIT = 3;
 
+type PlayPhase = 'briefing' | 'playing' | 'cleared';
+function pulseFeedback(pattern: number | number[]) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  navigator.vibrate(pattern);
+}
+
+
 export function PlayClient() {
   const { data: session } = useSession();
-  const [dayKey, setDayKey] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const forcedDay = new URLSearchParams(window.location.search).get('day');
-      if (forcedDay) return forcedDay;
-    }
-    return formatDateKey(new Date());
-  });
+  const [dayKey, setDayKey] = useState('');
   const [level, setLevel] = useState<PipeGridLevel | null>(null);
   const [moves, setMoves] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -38,6 +39,9 @@ export function PlayClient() {
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState<1 | 2 | 3>(1);
   const [path, setPath] = useState<Array<{ row: number; col: number }>>([]);
+  const [phase, setPhase] = useState<PlayPhase>('briefing');
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   async function loadForDay(dateKey: string) {
     const fixture = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('fixture') : null;
@@ -53,6 +57,13 @@ export function PlayClient() {
       nextLevel = applyProgress(fresh, progress.state as PipeGridProgressState);
       nextMoves = progress.moves;
       nextHints = progress.hintsUsed;
+      setStartedAt(progress.startedAt ?? Date.now());
+      setElapsedSeconds(progress.elapsedSeconds ?? 0);
+      setPhase('playing');
+    } else {
+      setPhase('briefing');
+      setStartedAt(null);
+      setElapsedSeconds(0);
     }
 
     setLevel(nextLevel);
@@ -61,9 +72,16 @@ export function PlayClient() {
     const solvedNow = hasConnectedPath(nextLevel);
     setSolved(solvedNow);
     setPath(solvedNow ? findConnectedPath(nextLevel) : []);
+    if (solvedNow) setPhase('cleared');
   }
 
   useEffect(() => {
+    const forcedDay = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('day') : null;
+    setDayKey(forcedDay ?? formatDateKey(new Date()));
+  }, []);
+
+  useEffect(() => {
+    if (!dayKey) return;
     let cancelled = false;
     loadForDay(dayKey).then(async () => {
       if (cancelled) return;
@@ -78,11 +96,20 @@ export function PlayClient() {
   }, [dayKey]);
 
   useEffect(() => {
+    if (!dayKey) return;
     const id = setInterval(() => {
       if (hasDayRolledOver(dayKey)) setDayKey(formatDateKey(new Date()));
     }, 15000);
     return () => clearInterval(id);
   }, [dayKey]);
+
+  useEffect(() => {
+    if (phase !== 'playing' || !startedAt || solved) return;
+    const id = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [phase, startedAt, solved]);
 
   async function persist(nextLevel: PipeGridLevel, nextMoves: number, nextHintsUsed: number) {
     await upsertPuzzleProgress({
@@ -90,19 +117,20 @@ export function PlayClient() {
       puzzleType: PUZZLE_TYPE,
       state: toProgressState(nextLevel, nextMoves),
       hintsUsed: nextHintsUsed,
-      startedAt: Date.now(),
-      elapsedSeconds: 0,
+      startedAt: startedAt ?? Date.now(),
+      elapsedSeconds,
       moves: nextMoves
     });
   }
 
   async function handleSlide(from: { row: number; col: number }) {
-    if (!level || solved || !canSlide(level, from)) return;
+    if (!level || solved || phase !== 'playing' || !canSlide(level, from)) return;
 
     const nextLevel = slideTile(level, from);
     const nextMoves = moves + 1;
     setLevel(nextLevel);
     setMoves(nextMoves);
+    pulseFeedback(12);
 
     const solvedPath = findConnectedPath(nextLevel);
     if (solvedPath.length > 0) {
@@ -112,12 +140,14 @@ export function PlayClient() {
       setStars(rating);
       setSolved(true);
       setPath(solvedPath);
+      setPhase('cleared');
+      pulseFeedback([18, 45, 18]);
       await upsertDailyActivity({
         date: dayKey,
         solved: true,
         score: finalScore,
         moves: nextMoves,
-        timeTaken: 0,
+        timeTaken: elapsedSeconds,
         difficulty: nextLevel.difficulty,
         hintsUsed,
         stars: rating,
@@ -139,7 +169,7 @@ export function PlayClient() {
   }
 
   async function useHint() {
-    if (!level || solved || hintsUsed >= HINT_LIMIT) return;
+    if (!level || solved || phase !== 'playing' || hintsUsed >= HINT_LIMIT) return;
     const nextHints = hintsUsed + 1;
     setHintsUsed(nextHints);
     await persist(level, moves, nextHints);
@@ -154,42 +184,78 @@ export function PlayClient() {
     setPath([]);
   }
 
-  const starLabel = useMemo(() => '⭐'.repeat(stars), [stars]);
+  function startMission() {
+    const now = Date.now();
+    setStartedAt(now);
+    setElapsedSeconds(0);
+    setPhase('playing');
+  }
 
-  if (!level) return <main className="page-shell game-page">Loading today&apos;s board…</main>;
+  const starLabel = useMemo(() => '⭐'.repeat(stars), [stars]);
+  const timerLabel = useMemo(() => {
+    const mins = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+    const secs = (elapsedSeconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  }, [elapsedSeconds]);
+
+  if (!dayKey || !level) return <main className="page-shell game-page">Loading today&apos;s board…</main>;
 
   return (
     <main className="page-shell game-page">
-      <section className="panel hud-card">
-        <h1 style={{ marginTop: 0 }}>Daily Puzzle</h1>
-        <p className="muted">Day {dayKey}</p>
+      <section className="panel game-brief-card">
+        <div>
+          <h1 style={{ marginTop: 0, marginBottom: 6 }}>Daily Mission • {dayKey}</h1>
+          <p className="muted" style={{ marginBottom: 0 }}>Build a clean tunnel route. Every move matters and fewer moves means higher reward.</p>
+        </div>
         <div className="hud-grid">
           <div><small>Moves</small><strong>{moves}</strong></div>
           <div><small>Hints Left</small><strong>{HINT_LIMIT - hintsUsed}</strong></div>
           <div><small>Streak</small><strong>{streak}</strong></div>
-          <div><small>Target</small><strong>Low moves</strong></div>
+          <div><small>Timer</small><strong>{timerLabel}</strong></div>
         </div>
+        {phase === 'briefing' && (
+          <div className="action-row">
+            <button className="wood-btn" onClick={startMission}>Start Mission</button>
+            <Link className="ghost-btn" href="/home">Back to HQ</Link>
+          </div>
+        )}
       </section>
 
       <PipeGridBoard level={level} onSlide={handleSlide} path={path} />
 
       <div className="action-row">
-        <button className="wood-btn" onClick={useHint} disabled={hintsUsed >= HINT_LIMIT || solved}>Hint</button>
+        <button className="wood-btn" onClick={useHint} disabled={hintsUsed >= HINT_LIMIT || solved || phase !== 'playing'}>Hint</button>
         <button className="ghost-btn" onClick={restart}>Restart</button>
         <Link className="ghost-btn" href="/levels">Level Mode</Link>
       </div>
 
-      {solved && (
+      {phase === 'briefing' && (
+        <div className="modal-overlay">
+          <div className="panel modal-card">
+            <h2 style={{ marginTop: 0 }}>Mission Briefing</h2>
+            <p>Goal: connect START to END by sliding only adjacent tiles into the empty space.</p>
+            <ul>
+              <li>Use fewer moves for higher stars.</li>
+              <li>Hints are limited; save them for deadlocks.</li>
+              <li>Locked tiles cannot move.</li>
+            </ul>
+            <button className="wood-btn" onClick={startMission}>Enter Puzzle</button>
+          </div>
+        </div>
+      )}
+
+      {phase === 'cleared' && (
         <div className="modal-overlay">
           <div className="panel modal-card">
             <h2 style={{ marginTop: 0 }}>Puzzle Cleared!</h2>
             <p>Moves: {moves}</p>
+            <p>Time: {timerLabel}</p>
             <p>Score: {score}</p>
             <p>{starLabel}</p>
             <div className="action-row" style={{ marginTop: 8 }}>
               <Link href="/home" className="wood-btn">Home</Link>
               <Link href="/stats" className="ghost-btn">Stats</Link>
-              <button className="wood-btn" onClick={restart}>Play Again</button>
+              <button className="wood-btn" onClick={restart}>Replay</button>
             </div>
           </div>
         </div>
