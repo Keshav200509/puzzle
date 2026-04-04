@@ -2,9 +2,17 @@ import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
 import { authOptions, isNextAuthConfigured } from '@/lib/server/auth';
 
-const handler = NextAuth(authOptions);
+function notConfigured() {
+  return NextResponse.json(
+    { ok: false, code: 'AUTH_NOT_CONFIGURED', error: 'NEXTAUTH_URL and NEXTAUTH_SECRET are required.' },
+    { status: 503 }
+  );
+}
 
 export async function GET(request: Request) {
+
+  if (!isNextAuthConfigured()) return notConfigured();
+  const handler = NextAuth(authOptions);
   if (!isNextAuthConfigured()) {
     return NextResponse.json({ ok: false, code: 'AUTH_NOT_CONFIGURED', error: 'NEXTAUTH_URL and NEXTAUTH_SECRET are required.' }, { status: 503 });
   }
@@ -12,6 +20,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!isNextAuthConfigured()) return notConfigured();
+  const handler = NextAuth(authOptions);
   if (!isNextAuthConfigured()) {
     return NextResponse.json({ ok: false, code: 'AUTH_NOT_CONFIGURED', error: 'NEXTAUTH_URL and NEXTAUTH_SECRET are required.' }, { status: 503 });
   }
