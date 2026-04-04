@@ -4,6 +4,7 @@
 
 Yes.
 
+
 If repository settings allow it, contributors can push directly to `main`.
 
 ## Exact GitHub steps to enable direct push to `main`
@@ -42,6 +43,9 @@ If repository settings allow it, contributors can push directly to `main`.
 ## Validate that direct push is now enabled
 
 Run this from local repo:
+If your repository permissions allow it, you can push directly to `main`.
+
+Typical direct flow:
 
 ```bash
 git checkout main
@@ -61,6 +65,18 @@ npm run lint
 npm test
 npm run build
 ```
+git commit -m "your change"
+git push origin main
+```
+
+## Why teams still use branches
+
+Even though direct push is possible, branches are usually preferred because they provide:
+
+- safer reviews before release,
+- easier rollback/isolation of incomplete work,
+- CI checks before merge,
+- cleaner collaboration with multiple contributors.
 
 ## Practical recommendation for this project
 
