@@ -12,7 +12,11 @@ export function isDatabaseConfigured() {
 export function getPrismaClient() {
   if (!isDatabaseConfigured()) return null;
   if (!global.__prisma) {
-    global.__prisma = new PrismaClient();
+    try {
+      global.__prisma = new PrismaClient();
+    } catch {
+      return null;
+    }
   }
   return global.__prisma;
 }
