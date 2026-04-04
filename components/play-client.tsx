@@ -27,6 +27,7 @@ function pulseFeedback(pattern: number | number[]) {
   navigator.vibrate(pattern);
 }
 
+
 export function PlayClient() {
   const { data: session } = useSession();
   const [dayKey, setDayKey] = useState('');
