@@ -10,13 +10,20 @@ function notConfigured() {
 }
 
 export async function GET(request: Request) {
+
   if (!isNextAuthConfigured()) return notConfigured();
   const handler = NextAuth(authOptions);
+  if (!isNextAuthConfigured()) {
+    return NextResponse.json({ ok: false, code: 'AUTH_NOT_CONFIGURED', error: 'NEXTAUTH_URL and NEXTAUTH_SECRET are required.' }, { status: 503 });
+  }
   return handler(request);
 }
 
 export async function POST(request: Request) {
   if (!isNextAuthConfigured()) return notConfigured();
   const handler = NextAuth(authOptions);
+  if (!isNextAuthConfigured()) {
+    return NextResponse.json({ ok: false, code: 'AUTH_NOT_CONFIGURED', error: 'NEXTAUTH_URL and NEXTAUTH_SECRET are required.' }, { status: 503 });
+  }
   return handler(request);
 }
