@@ -92,6 +92,7 @@ export function PipeGridBoard({
 
   const unit = 100;
   const pathPoints = path.map((point) => `${point.col * unit + unit / 2},${point.row * unit + unit / 2}`).join(' ');
+  const pathD = path.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.col * unit + unit / 2} ${point.row * unit + unit / 2}`).join(' ');
 
   return (
     <div className="pipe-board-shell">
@@ -128,6 +129,12 @@ export function PipeGridBoard({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            <path d={pathD} fill="none" stroke="transparent" id="solve-route" />
+            <circle r="10" fill="#fde68a" className="route-ball">
+              <animateMotion dur="1.9s" repeatCount="indefinite" rotate="auto">
+                <mpath href="#solve-route" />
+              </animateMotion>
+            </circle>
           </svg>
         )}
       </div>

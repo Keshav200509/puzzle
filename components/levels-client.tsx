@@ -8,7 +8,7 @@ import { createSeedHash } from '@/lib/core/seed';
 import { syncAllPending } from '@/lib/client/sync';
 import { addLevelRun, getAllLevelRuns, upsertPuzzleProgress } from '@/lib/storage/db';
 import { canSlide, slideTile, toProgressState } from '@/lib/puzzles/pipe-grid/gameplay';
-import { generatePipeGrid, levelConfig } from '@/lib/puzzles/pipe-grid/generator';
+import { generatePipeGrid, levelConfig, levelTargets } from '@/lib/puzzles/pipe-grid/generator';
 import type { PipeGridLevel } from '@/lib/puzzles/pipe-grid/types';
 import { hasConnectedPath } from '@/lib/puzzles/pipe-grid/validator';
 import { PipeGridBoard } from '@/lib/puzzles/pipe-grid/ui/PipeGridBoard';
@@ -17,6 +17,11 @@ const SECRET = 'logic-looper-v1';
 const HINT_LIMIT = 2;
 
 type Phase = 'briefing' | 'playing' | 'cleared';
+function pulseFeedback(pattern: number | number[]) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  navigator.vibrate(pattern);
+}
+
 
 export function LevelsClient() {
   const { data: session } = useSession();
@@ -29,6 +34,13 @@ export function LevelsClient() {
   const [phase, setPhase] = useState<Phase>('briefing');
 
   const unlockedLevel = useMemo(() => Math.max(1, Object.keys(runs).length + 1), [runs]);
+  const chapter = useMemo(() => {
+    if (levelNumber <= 5) return 'Copper District';
+    if (levelNumber <= 10) return 'Steam Harbor';
+    if (levelNumber <= 15) return 'Obsidian Vault';
+    return 'Aurora Core';
+  }, [levelNumber]);
+  const targets = useMemo(() => levelTargets(levelNumber), [levelNumber]);
 
   const refreshRuns = useCallback(async () => {
     const all = await getAllLevelRuns();
@@ -67,6 +79,7 @@ export function LevelsClient() {
     const nextMoves = moves + 1;
     setBoard(next);
     setMoves(nextMoves);
+    pulseFeedback(12);
 
     if (hasConnectedPath(next)) {
       const score = computeDailyScore(nextMoves + levelNumber * 2, hintsUsed);
@@ -90,6 +103,7 @@ export function LevelsClient() {
 
       await refreshRuns();
       setPhase('cleared');
+      pulseFeedback([18, 45, 18]);
       return;
     }
 
@@ -126,6 +140,7 @@ export function LevelsClient() {
     <main className="page-shell game-page">
       <section className="panel game-brief-card">
         <h1 style={{ marginTop: 0 }}>Campaign Level {levelNumber}</h1>
+        <p className="muted">{chapter} • Difficulty {levelConfig(levelNumber).difficulty} • Target: clean tunnel routing.</p>
         <p className="muted">Difficulty {levelConfig(levelNumber).difficulty} • Target: clean tunnel routing.</p>
 
         <div className="flow-row">
@@ -142,6 +157,12 @@ export function LevelsClient() {
           <div><small>Hints</small><strong>{HINT_LIMIT - hintsUsed}</strong></div>
           <div><small>Best</small><strong>{best ? `${best.moves} moves` : '—'}</strong></div>
           <div><small>Unlocked</small><strong>{unlockedLevel}</strong></div>
+        </div>
+
+        <div className="target-strip">
+          <span>🥇 ≤ {targets.goldMaxMoves}</span>
+          <span>🥈 ≤ {targets.silverMaxMoves}</span>
+          <span>🥉 ≤ {targets.bronzeMaxMoves}</span>
         </div>
 
         {phase === 'briefing' && <button className="wood-btn" onClick={startLevel}>Start Level</button>}

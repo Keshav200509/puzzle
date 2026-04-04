@@ -221,3 +221,20 @@ export function levelConfig(levelNumber: number): Required<GeneratorOptions> {
     difficulty: Math.min(5, 1 + Math.floor(safeLevel / 2))
   };
 }
+
+
+type LevelTargets = {
+  bronzeMaxMoves: number;
+  silverMaxMoves: number;
+  goldMaxMoves: number;
+};
+
+export function levelTargets(levelNumber: number): LevelTargets {
+  const cfg = levelConfig(levelNumber);
+  const base = 18 + cfg.difficulty * 3 + Math.floor(levelNumber / 2);
+  return {
+    goldMaxMoves: base,
+    silverMaxMoves: base + 5,
+    bronzeMaxMoves: base + 10
+  };
+}

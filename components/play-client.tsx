@@ -22,6 +22,10 @@ const PUZZLE_TYPE = 'pipe-grid';
 const HINT_LIMIT = 3;
 
 type PlayPhase = 'briefing' | 'playing' | 'cleared';
+function pulseFeedback(pattern: number | number[]) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  navigator.vibrate(pattern);
+}
 
 export function PlayClient() {
   const { data: session } = useSession();
@@ -124,6 +128,7 @@ export function PlayClient() {
     const nextMoves = moves + 1;
     setLevel(nextLevel);
     setMoves(nextMoves);
+    pulseFeedback(12);
 
     const solvedPath = findConnectedPath(nextLevel);
     if (solvedPath.length > 0) {
@@ -134,6 +139,7 @@ export function PlayClient() {
       setSolved(true);
       setPath(solvedPath);
       setPhase('cleared');
+      pulseFeedback([18, 45, 18]);
       await upsertDailyActivity({
         date: dayKey,
         solved: true,
