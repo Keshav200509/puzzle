@@ -10,7 +10,8 @@ function notConfigured() {
 }
 
 export async function GET(request: Request) {
-
+  if (!isNextAuthConfigured()) return notConfigured();
+  const handler = NextAuth(authOptions);
   if (!isNextAuthConfigured()) return notConfigured();
   const handler = NextAuth(authOptions);
   if (!isNextAuthConfigured()) {
