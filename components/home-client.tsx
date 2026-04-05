@@ -67,6 +67,28 @@ export function HomeClient() {
         </div>
       </section>
 
+
+      <section className="panel hero-card">
+        <h2 style={{ marginTop: 0 }}>Play Modes</h2>
+        <div className="mode-grid">
+          <article>
+            <strong>Daily Mission</strong>
+            <span>One handcrafted puzzle every day with streak rewards.</span>
+            <Link href="/play" className="ghost-btn">Play Daily</Link>
+          </article>
+          <article>
+            <strong>Campaign Route</strong>
+            <span>Progressive stages inspired by board-game journey maps.</span>
+            <Link href="/levels" className="ghost-btn">Continue Campaign</Link>
+          </article>
+          <article>
+            <strong>Arena Ranking</strong>
+            <span>Compare your tactical speed and stars with global players.</span>
+            <Link href="/leaderboard" className="ghost-btn">Open Arena</Link>
+          </article>
+        </div>
+      </section>
+
       <section className="dashboard-grid">
         <article className="panel stat-card"><h3>🔥 Current Streak</h3><p>{streak} days</p></article>
         <article className="panel stat-card"><h3>🌟 Best Streak</h3><p>{bestStreak} days</p></article>
