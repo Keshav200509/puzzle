@@ -20,7 +20,6 @@ function notConfigured(request: Request) {
   );
 }
 
-
 function authFailureFallback(request: Request) {
   const { pathname } = new URL(request.url);
   if (pathname.endsWith('/session')) return NextResponse.json(null, { status: 200 });
@@ -54,6 +53,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!isNextAuthConfigured()) return notConfigured(request);
+  return runHandler(request);
   const handler = NextAuth(authOptions);
   return handler(request);
 }
