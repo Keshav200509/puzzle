@@ -223,6 +223,17 @@ export function PlayClient() {
 
       <PipeGridBoard level={level} onSlide={handleSlide} path={path} />
 
+
+      <section className="panel challenge-strip">
+        <h3 style={{ margin: '0 0 8px' }}>Mission Targets</h3>
+        <div className="target-strip">
+          <span>🎯 Solve under 40 moves</span>
+          <span>⚡ Use at most 1 hint</span>
+          <span>🏅 Keep streak alive</span>
+          <span>🧠 Plan from end to start</span>
+        </div>
+      </section>
+
       <div className="action-row">
         <button className="wood-btn" onClick={useHint} disabled={hintsUsed >= HINT_LIMIT || solved || phase !== 'playing'}>Hint</button>
         <button className="ghost-btn" onClick={restart}>Restart</button>
