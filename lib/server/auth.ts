@@ -9,12 +9,23 @@ function hasValue(input?: string | null) {
   return value !== 'undefined' && value !== 'null';
 }
 
+function getAuthSecret() {
+  const direct = process.env.NEXTAUTH_SECRET;
+  if (hasValue(direct)) return direct as string;
+
+  // Backward compatibility: some environments only set AUTH_SECRET.
+  const legacy = process.env.AUTH_SECRET;
+  if (hasValue(legacy)) return legacy as string;
+
+  return undefined;
+}
+
 export function isGoogleAuthConfigured() {
   return hasValue(process.env.GOOGLE_CLIENT_ID) && hasValue(process.env.GOOGLE_CLIENT_SECRET);
 }
 
 export function isNextAuthConfigured() {
-  return hasValue(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET) && hasValue(process.env.NEXTAUTH_URL);
+  return hasValue(getAuthSecret()) && hasValue(process.env.NEXTAUTH_URL);
 }
 
 const providers: NextAuthOptions['providers'] = [
@@ -38,6 +49,7 @@ if (isGoogleAuthConfigured()) {
 }
 
 export const authOptions: NextAuthOptions = {
+  secret: getAuthSecret(),
   providers,
   session: { strategy: 'jwt' },
   callbacks: {
