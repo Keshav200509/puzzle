@@ -45,6 +45,7 @@ async function runHandler(request: Request) {
 export async function GET(request: Request) {
   if (!isNextAuthConfigured()) return notConfigured(request);
   return runHandler(request);
+
 export async function GET(request: Request) {
   if (!isNextAuthConfigured()) return notConfigured(request);
   const handler = NextAuth(authOptions);
@@ -54,6 +55,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!isNextAuthConfigured()) return notConfigured(request);
   return runHandler(request);
+
   const handler = NextAuth(authOptions);
   return handler(request);
 }
