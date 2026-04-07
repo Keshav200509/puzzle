@@ -10,8 +10,7 @@ permissions:
   contents: write       # Required to push changes/merge
   pull-requests: write  # Required to create/update PRs
   issues: write         # Required to respond to issues
-  actions: read         # Recommended for Claude to see CI status
-
+  
 jobs:
   claude:
     runs-on: ubuntu-latest
