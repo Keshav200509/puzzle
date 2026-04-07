@@ -10,18 +10,6 @@ jobs:
     steps:
       - uses: anthropic/claude-code-action@v1 # (Verify specific action name in docs)
         with:
-          anthropic_api_key: ${{'name: Claude Agent
-on:
-  issues:
-    types: [opened, edited]
-  issue_comment:
-    types: [created]
-jobs:
-  claude:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: anthropic/claude-code-action@v1 # (Verify specific action name in docs)
-        with:
           Anthropic_Api_Key: ${{'m330hIglBT3QQ-h--zSgAA'}}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
