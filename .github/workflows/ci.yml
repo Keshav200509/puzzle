@@ -4,12 +4,24 @@ on:
     types: [opened, edited]
   issue_comment:
     types: [created]
+
+# Added explicit permissions for merging and modifying code
+permissions:
+  contents: write       # Required to push changes/merge
+  pull-requests: write  # Required to create/update PRs
+  issues: write         # Required to respond to issues
+  actions: read         # Recommended for Claude to see CI status
+
 jobs:
   claude:
     runs-on: ubuntu-latest
     steps:
-      - uses: anthropic/claude-code-action@v1 # (Verify specific action name in docs)
+      - uses: actions/checkout@v4 # Ensure code is checked out first
+      
+      - uses: anthropics/claude-code-action@v1
         with:
-          Anthropic_Api_Key: ${{'m330hIglBT3QQ-h--zSgAA'}}
+          # Reference the secret, do NOT hardcode the key here
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
 
