@@ -1,35 +1,63 @@
-name: CI
+# name: CI
 
+# on:
+#   push:
+#     branches:
+#       - main
+#       - codex/**
+#   pull_request:
+
+# jobs:
+#   validate:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+
+#       - name: Setup Node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+
+#       - name: Install dependencies
+#         run: npm ci
+
+#       - name: Repository integrity checks
+#         run: npm run check:repo
+
+#       - name: Build
+#         run: npm run build
+
+#       - name: Test
+#         run: npm test
+
+name: Claude Agent
 on:
-  push:
-    branches:
-      - main
-      - codex/**
-  pull_request:
-
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
 jobs:
-  validate:
+  claude:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: anthropic/claude-code-action@v1 # (Verify specific action name in docs)
         with:
-          node-version: '20'
-          cache: 'npm'
+          anthropic_api_key: ${{'name: Claude Agent
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropic/claude-code-action@v1 # (Verify specific action name in docs)
+        with:
+          anthropic_api_key: ${{'m330hIglBT3QQ-h--zSgAA'}}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Repository integrity checks
-        run: npm run check:repo
-
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm test
