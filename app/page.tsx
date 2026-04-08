@@ -1,42 +1,73 @@
 import Link from 'next/link';
-import { TheGridLogo } from '@/components/the-grid-logo';
 
 export default function LandingPage() {
+  // Static mini-grid layout: row 2 is the pipe path (col 0=start, 1=empty, 2-3=pipe, 4=end)
+  const cells = Array.from({ length: 25 }, (_, i) => {
+    const row = Math.floor(i / 5);
+    const col = i % 5;
+    if (row === 2 && col === 0) return 'start';
+    if (row === 2 && col === 4) return 'end';
+    if (row === 2 && col === 1) return 'empty';
+    if (row === 2) return 'path';
+    return 'default';
+  });
+
   return (
     <main className="onboarding-page">
       <div className="onboarding-pattern" />
-      <section className="glass-card hero-glass">
-        <div className="cover-badge">Daily Puzzle Campaign</div>
-        <TheGridLogo size={128} style={{ margin: '0 auto 12px', display: 'block' }} />
-        <h1 style={{ margin: 0, textAlign: 'center', fontSize: 'clamp(2rem, 8vw, 3rem)' }}>The Grid: Tunnel Quest</h1>
-        <p style={{ textAlign: 'center', opacity: 0.9 }}>
-          Slide, route, and clear. A mobile-first pipe puzzle adventure inspired by roll-the-ball gameplay loops.
+
+      <section className="glass-card" style={{ textAlign: 'center' }}>
+        <span className="cover-badge">Daily Puzzle Game</span>
+
+        <h1 style={{ margin: '10px 0 6px', letterSpacing: '-0.02em' }}>The Grid</h1>
+        <p className="muted" style={{ marginBottom: 20, fontSize: '0.95rem' }}>
+          One puzzle every day. Slide tiles, build the pipe route, earn your streak.
         </p>
 
+        {/* Mini board preview */}
+        <div className="mini-grid" aria-hidden>
+          {cells.map((type, i) => (
+            <div key={i} className={`mini-cell ${type}`} />
+          ))}
+        </div>
+
+        {/* How it works */}
         <div className="cover-flow">
           <article>
-            <strong>1. Briefing</strong>
-            <span>Daily and campaign missions with objectives.</span>
+            <span className="step-num">1</span>
+            <div>
+              <strong>Slide tiles</strong>
+              <span>Move pieces adjacent to the blank into the empty space</span>
+            </div>
           </article>
           <article>
-            <strong>2. Route Build</strong>
-            <span>Slide only adjacent blocks and avoid lock traps.</span>
+            <span className="step-num">2</span>
+            <div>
+              <strong>Build the route</strong>
+              <span>Align pipes to connect S → E without gaps</span>
+            </div>
           </article>
           <article>
-            <strong>3. Rewards</strong>
-            <span>Earn stars, streaks and leaderboard rank.</span>
+            <span className="step-num">3</span>
+            <div>
+              <strong>Earn your streak</strong>
+              <span>Fewer moves = more stars. Come back daily to keep your streak</span>
+            </div>
           </article>
         </div>
 
-        <div className="chip-row">
-          <span className="feature-chip">🧩 Dynamic puzzle pathing</span>
-          <span className="feature-chip">📴 Fully offline gameplay</span>
-          <span className="feature-chip">🏆 Campaign + daily loop</span>
+        <div className="action-row" style={{ justifyContent: 'center', marginTop: 16 }}>
+          <Link className="wood-btn" href="/play" style={{ minWidth: 180 }}>
+            Play Today&apos;s Puzzle
+          </Link>
+          <Link className="ghost-btn" href="/home">
+            My Dashboard
+          </Link>
         </div>
-        <div className="action-row" style={{ justifyContent: 'center' }}>
-          <Link className="wood-btn" href="/auth">Start Adventure</Link>
-          <Link className="ghost-btn" href="/home">Guest Preview</Link>
-        </div>
+
+        <p className="muted" style={{ marginTop: 14, fontSize: '0.76rem' }}>
+          Free · Offline-ready · Sign in to sync and join global leaderboards
+        </p>
       </section>
     </main>
   );
