@@ -80,3 +80,38 @@ export function findConnectedPath(level: PipeGridLevel): GridPosition[] {
 export function hasConnectedPath(level: PipeGridLevel): boolean {
   return findConnectedPath(level).length > 0;
 }
+
+/**
+ * Returns all tile positions reachable from START through properly-connected
+ * pipes — even if the chain doesn't yet reach END. Used for live feedback
+ * during play: tiles in this set get an amber "partial path" highlight,
+ * giving the player a visual sense of how far their route has been built.
+ */
+export function findReachableFromStart(level: PipeGridLevel): GridPosition[] {
+  const visited = new Set<string>();
+  const queue: GridPosition[] = [level.start];
+  const result: GridPosition[] = [];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const key = `${current.row}:${current.col}`;
+    if (visited.has(key)) continue;
+    visited.add(key);
+    result.push(current);
+
+    const tile = level.tiles[current.row]?.[current.col];
+    if (!tile) continue;
+
+    for (const direction of getOpenings(tile)) {
+      const delta = DELTAS[direction];
+      const next = { row: current.row + delta.row, col: current.col + delta.col };
+      const nextTile = level.tiles[next.row]?.[next.col];
+      if (!nextTile) continue;
+      if (!getOpenings(nextTile).includes(OPPOSITE[direction])) continue;
+      const nextKey = `${next.row}:${next.col}`;
+      if (!visited.has(nextKey)) queue.push(next);
+    }
+  }
+
+  return result;
+}
