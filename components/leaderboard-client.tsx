@@ -192,6 +192,8 @@ export function LeaderboardClient() {
           </>
         )}
       </section>
+
+      <BottomNav />
     </main>
   );
 }
