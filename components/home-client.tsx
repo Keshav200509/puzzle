@@ -8,6 +8,14 @@ import { formatDateKey } from '@/lib/core/date';
 import { calculateBestStreak, calculateStreak } from '@/lib/core/streak';
 import { getAllDailyActivity, getAllLevelRuns } from '@/lib/storage/db';
 
+type ServerStats = {
+  totalDailySolves: number;
+  totalLevelSolves: number;
+  totalStars: number;
+  bestDailyScore: number;
+  dailyDates: string[];
+};
+
 export function HomeClient() {
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
@@ -15,9 +23,12 @@ export function HomeClient() {
   const [levelRuns, setLevelRuns] = useState(0);
   const [starCount, setStarCount] = useState(0);
   const [todaySolved, setTodaySolved] = useState(false);
+  const [serverStats, setServerStats] = useState<ServerStats | null>(null);
+  const [syncedFromServer, setSyncedFromServer] = useState(false);
   const { data: session } = useSession();
   const [today, setToday] = useState('');
 
+  // Load local stats from IndexedDB
   useEffect(() => {
     const todayKey = formatDateKey(new Date());
     setToday(todayKey);
@@ -36,12 +47,44 @@ export function HomeClient() {
     });
   }, []);
 
-  const nextLevel = useMemo(() => Math.max(1, Math.floor(levelRuns / 2) + 1), [levelRuns]);
+  // Fetch server stats when signed in and online
+  useEffect(() => {
+    if (!session || typeof navigator === 'undefined' || !navigator.onLine) return;
+
+    fetch('/api/user/stats')
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data: ServerStats = await res.json();
+        setServerStats(data);
+        setSyncedFromServer(true);
+
+        // Prefer server totals (authoritative across all devices)
+        if (data.totalDailySolves > 0 || data.totalLevelSolves > 0) {
+          setTotalSolves((local) => Math.max(local, data.totalDailySolves));
+          setStarCount((local) => Math.max(local, data.totalStars));
+
+          // Rebuild streak from server dates if more history available
+          if (data.dailyDates.length > 0) {
+            const todayKey = formatDateKey(new Date());
+            const map = Object.fromEntries(data.dailyDates.map((d) => [d, { solved: true }]));
+            setStreak(calculateStreak(map));
+            setBestStreak(calculateBestStreak(map));
+            setTodaySolved(Boolean(map[todayKey]));
+          }
+        }
+      })
+      .catch(() => {/* offline or DB not configured – silent */});
+  }, [session]);
+
+  const nextLevel = useMemo(() => {
+    const completedCount = serverStats?.totalLevelSolves ?? levelRuns;
+    return Math.max(1, Math.min(50, completedCount + 1));
+  }, [serverStats, levelRuns]);
 
   return (
     <main className="page-shell game-page">
 
-      {/* ── Streak hero (primary motivation, LinkedIn-style) ── */}
+      {/* ── Streak hero ── */}
       <section className="panel streak-hero" style={{ marginBottom: 10 }}>
         <span className="streak-number">{streak}</span>
         <span className="streak-label">🔥 Day streak</span>
@@ -55,6 +98,11 @@ export function HomeClient() {
             Best: {bestStreak} days
           </p>
         )}
+        {syncedFromServer && (
+          <p className="muted" style={{ marginTop: 4, fontSize: '0.72rem', opacity: 0.7 }}>
+            ☁ Synced from account
+          </p>
+        )}
       </section>
 
       {/* ── Today's puzzle CTA ── */}
@@ -65,7 +113,7 @@ export function HomeClient() {
         <span className="daily-date">{today}</span>
         {todaySolved ? (
           <div className="action-row" style={{ justifyContent: 'center' }}>
-            <Link href="/stats" className="wood-btn">View My Stats</Link>
+            <Link href="/stats" className="wood-btn">View Stats</Link>
             <Link href="/play" className="ghost-btn">Replay</Link>
           </div>
         ) : (
@@ -75,7 +123,7 @@ export function HomeClient() {
         )}
       </div>
 
-      {/* ── Quick stats ── */}
+      {/* ── Quick KPI stats ── */}
       <div className="kpi-row" style={{ marginBottom: 12 }}>
         <div className="kpi-card">
           <span className="kpi-value">{totalSolves}</span>
@@ -87,7 +135,7 @@ export function HomeClient() {
         </div>
         <div className="kpi-card">
           <span className="kpi-value">{starCount}</span>
-          <span className="kpi-label">Stars</span>
+          <span className="kpi-label">Stars ⭐</span>
         </div>
       </div>
 
@@ -106,7 +154,7 @@ export function HomeClient() {
             <span className="mode-icon">🗺️</span>
             <div>
               <strong>Campaign</strong>
-              <span>Progressive levels that get harder as you advance.</span>
+              <span>50 levels across 7 chapters — from Copper to Apex.</span>
             </div>
           </article>
           <article>
@@ -127,14 +175,38 @@ export function HomeClient() {
       {/* ── Account ── */}
       <section className="panel" style={{ marginBottom: 10, fontSize: '0.875rem' }}>
         {session ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <span className="muted">Signed in as <strong style={{ color: 'var(--text)' }}>{session.user?.name ?? session.user?.email}</strong></span>
-            <button className="ghost-btn" onClick={() => signOut({ callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>Sign out</button>
-          </div>
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <span className="muted">
+                Signed in as <strong style={{ color: 'var(--text)' }}>{session.user?.name ?? session.user?.email}</strong>
+              </span>
+              <button className="ghost-btn" onClick={() => signOut({ callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>
+                Sign out
+              </button>
+            </div>
+            {serverStats && (
+              <div className="kpi-row" style={{ marginTop: 12 }}>
+                <div className="kpi-card">
+                  <span className="kpi-value">{serverStats.totalDailySolves}</span>
+                  <span className="kpi-label">Daily synced</span>
+                </div>
+                <div className="kpi-card">
+                  <span className="kpi-value">{serverStats.totalLevelSolves}</span>
+                  <span className="kpi-label">Levels synced</span>
+                </div>
+                <div className="kpi-card">
+                  <span className="kpi-value">{serverStats.bestDailyScore}</span>
+                  <span className="kpi-label">Best score</span>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <span className="muted">Sign in to sync your progress and join global rankings.</span>
-            <button className="ghost-btn" onClick={() => signIn(undefined, { callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>Sign in</button>
+            <span className="muted">Sign in to sync progress across devices and join global rankings.</span>
+            <button className="ghost-btn" onClick={() => signIn(undefined, { callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>
+              Sign in
+            </button>
           </div>
         )}
         <div className="progress-track" style={{ marginTop: 12 }}>
