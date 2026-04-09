@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { BottomNav } from '@/components/bottom-nav';
 import { formatDateKey } from '@/lib/core/date';
-import type { DailyActivityRecord } from '@/lib/storage/db';
-import { getAllDailyActivity } from '@/lib/storage/db';
+import type { DailyActivityRecord, LevelRunRecord } from '@/lib/storage/db';
+import { getAllDailyActivity, getAllLevelRuns, getOrCreatePlayerProfile } from '@/lib/storage/db';
 
 type SortMode = 'moves' | 'score';
 type ScopeMode = 'daily' | 'levels';
@@ -15,7 +15,8 @@ type BoardTab = 'local' | 'global';
 type Leader = { rank: number; name: string; moves: number; score: number; stars: number };
 
 export function LeaderboardClient() {
-  const [entries, setEntries] = useState<DailyActivityRecord[]>([]);
+  const [dailyEntries, setDailyEntries] = useState<DailyActivityRecord[]>([]);
+  const [levelEntries, setLevelEntries] = useState<LevelRunRecord[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('moves');
   const [scope, setScope] = useState<ScopeMode>('daily');
   const [tab, setTab] = useState<BoardTab>('local');
@@ -23,6 +24,7 @@ export function LeaderboardClient() {
   const [online, setOnline] = useState(true);
   const [dbConfigured, setDbConfigured] = useState(false);
   const [globalMessage, setGlobalMessage] = useState('');
+  const [localPlayerName, setLocalPlayerName] = useState('Guest Explorer');
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -38,7 +40,11 @@ export function LeaderboardClient() {
   }, []);
 
   useEffect(() => {
-    getAllDailyActivity().then((items) => setEntries(items.filter((item) => item.solved)));
+    getAllDailyActivity().then((items) => setDailyEntries(items.filter((item) => item.solved)));
+    getAllLevelRuns().then((items) => setLevelEntries(items.filter((item) => item.solved)));
+    getOrCreatePlayerProfile().then((profile) => {
+      if (profile?.name) setLocalPlayerName(profile.name);
+    });
   }, []);
 
   useEffect(() => {
@@ -70,10 +76,7 @@ export function LeaderboardClient() {
       return;
     }
 
-    const endpoint =
-      scope === 'daily'
-        ? `/api/leaderboard/daily?date=${formatDateKey(new Date())}`
-        : `/api/leaderboard/levels?level=1`;
+    const endpoint = scope === 'daily' ? `/api/leaderboard/daily?date=${formatDateKey(new Date())}` : `/api/leaderboard/levels?level=1`;
 
     fetch(endpoint)
       .then(async (res) => {
@@ -92,11 +95,29 @@ export function LeaderboardClient() {
       });
   }, [dbConfigured, online, scope, session, tab]);
 
-  const ranked = useMemo(() => {
-    const cloned = [...entries];
-    if (sortMode === 'moves') return cloned.sort((a, b) => a.moves - b.moves || b.score - a.score).slice(0, 30);
-    return cloned.sort((a, b) => b.score - a.score || a.moves - b.moves).slice(0, 30);
-  }, [entries, sortMode]);
+  const localRows = useMemo(() => {
+    if (scope === 'levels') {
+      const rows = levelEntries.map((entry) => ({
+        key: `${entry.id}`,
+        label: `Level ${entry.level}`,
+        moves: entry.moves,
+        score: entry.score,
+        playerName: entry.playerName ?? localPlayerName
+      }));
+      if (sortMode === 'moves') return rows.sort((a, b) => a.moves - b.moves || b.score - a.score).slice(0, 30);
+      return rows.sort((a, b) => b.score - a.score || a.moves - b.moves).slice(0, 30);
+    }
+
+    const rows = dailyEntries.map((entry) => ({
+      key: `${entry.date}`,
+      label: entry.date,
+      moves: entry.moves,
+      score: entry.score,
+      playerName: entry.playerName ?? localPlayerName
+    }));
+    if (sortMode === 'moves') return rows.sort((a, b) => a.moves - b.moves || b.score - a.score).slice(0, 30);
+    return rows.sort((a, b) => b.score - a.score || a.moves - b.moves).slice(0, 30);
+  }, [dailyEntries, levelEntries, localPlayerName, scope, sortMode]);
 
   const showGlobalTab = Boolean(session && online && dbConfigured);
 
@@ -104,7 +125,7 @@ export function LeaderboardClient() {
     <main className="page-shell game-page px-4">
       <section className="panel phone-shell-guard max-w-md mx-auto">
         <h1 style={{ marginTop: 0 }}>Leaderboard</h1>
-        <p>Local rankings always work offline.</p>
+        <p>Local rankings always work offline. Callsign: <strong>{localPlayerName}</strong></p>
 
         <div className="action-row" style={{ marginBottom: 10 }}>
           <button className={`ghost-btn ${tab === 'local' ? 'active' : ''}`} onClick={() => setTab('local')}>Local</button>
@@ -120,17 +141,18 @@ export function LeaderboardClient() {
         {tab === 'local' && (
           <>
             <h3>Local</h3>
-            {ranked.length === 0 ? (
+            {localRows.length === 0 ? (
               <div className="empty-state">
                 <p>🧩 No solved runs yet.</p>
                 <Link href="/play" className="wood-btn">Play Daily Puzzle</Link>
               </div>
             ) : (
               <div className="list-grid compact-list">
-                {ranked.map((entry, index) => (
-                  <div key={`${entry.date}-${index}`} className="list-item leaderboard-row">
+                {localRows.map((entry, index) => (
+                  <div key={`${entry.key}-${index}`} className="list-item leaderboard-row">
                     <strong>{index < 3 ? ['🥇', '🥈', '🥉'][index] : `#${index + 1}`}</strong>
-                    <span>{entry.date}</span>
+                    <span>{entry.playerName}</span>
+                    <span>{entry.label}</span>
                     <span>{entry.moves} moves</span>
                     <span>{entry.score} pts</span>
                   </div>

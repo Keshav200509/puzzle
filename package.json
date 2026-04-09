@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "npm run check:repo && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -15,7 +15,10 @@
     "test:e2e": "playwright test -c playwright.config.ts e2e/core.spec.ts",
     "test:e2e:env": "playwright test -c playwright.config.ts e2e/env-gated.spec.ts",
     "preflight": "node scripts/preflight.mjs",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "check:auth-route": "node scripts/check-auth-route.mjs",
+    "check:merge-markers": "node scripts/check-merge-markers.mjs",
+    "check:repo": "npm run check:merge-markers && npm run check:auth-route"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

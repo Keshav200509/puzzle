@@ -10,6 +10,7 @@ export type DailyActivityRecord = {
   hintsUsed?: number;
   stars?: number;
   synced: boolean;
+  playerName?: string;
 };
 
 export type LevelRunRecord = {
@@ -22,6 +23,7 @@ export type LevelRunRecord = {
   stars: number;
   playedAt: number;
   synced: boolean;
+  playerName?: string;
 };
 
 export type PuzzleProgressRecord = {
@@ -34,14 +36,22 @@ export type PuzzleProgressRecord = {
   moves: number;
 };
 
+export type PlayerProfileRecord = {
+  id: 'self';
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 type LogicLooperDb = {
   dailyActivity: { key: string; value: DailyActivityRecord };
   puzzleProgress: { key: string; value: PuzzleProgressRecord };
   levelRuns: { key: string; value: LevelRunRecord };
+  playerProfile: { key: 'self'; value: PlayerProfileRecord };
 };
 
 const DB_NAME = 'logic-looper-db';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 let dbPromise: Promise<IDBPDatabase<LogicLooperDb>> | null = null;
 
@@ -57,6 +67,7 @@ async function getDb(): Promise<IDBPDatabase<LogicLooperDb> | null> {
         if (!db.objectStoreNames.contains('dailyActivity')) db.createObjectStore('dailyActivity', { keyPath: 'date' });
         if (!db.objectStoreNames.contains('puzzleProgress')) db.createObjectStore('puzzleProgress', { keyPath: 'date' });
         if (!db.objectStoreNames.contains('levelRuns')) db.createObjectStore('levelRuns', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('playerProfile')) db.createObjectStore('playerProfile', { keyPath: 'id' });
       }
     });
   }
@@ -128,4 +139,31 @@ export async function markLevelRunsSynced(ids: string[]): Promise<void> {
     if (!run) continue;
     await db.put('levelRuns', { ...run, synced: true });
   }
+}
+
+export async function getPlayerProfile(): Promise<PlayerProfileRecord | undefined> {
+  const db = await getDb();
+  return db ? db.get('playerProfile', 'self') : undefined;
+}
+
+export async function upsertPlayerProfile(name: string): Promise<PlayerProfileRecord | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const now = Date.now();
+  const cleanName = name.trim().slice(0, 24) || 'Guest Explorer';
+  const existing = await db.get('playerProfile', 'self');
+  const next: PlayerProfileRecord = {
+    id: 'self',
+    name: cleanName,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now
+  };
+  await db.put('playerProfile', next);
+  return next;
+}
+
+export async function getOrCreatePlayerProfile(): Promise<PlayerProfileRecord | null> {
+  const existing = await getPlayerProfile();
+  if (existing) return existing;
+  return upsertPlayerProfile(`Player-${Math.random().toString(36).slice(2, 6).toUpperCase()}`);
 }

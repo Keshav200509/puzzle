@@ -1,28 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+const NAV_ITEMS = [
+  { href: '/home', label: 'HQ', emoji: '🧭' },
+  { href: '/play', label: 'Daily', emoji: '🧩' },
+  { href: '/levels', label: 'Campaign', emoji: '🗺️' },
+  { href: '/leaderboard', label: 'Leaders', emoji: '🏆' },
+  { href: '/stats', label: 'Stats', emoji: '📈' },
+  { href: '/auth', label: 'Account', emoji: '👤' }
+];
 
 export function MainNav() {
+  const pathname = usePathname();
+
   return (
-    <nav className="panel" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-      <Link className="wood-btn" href="/">
-        Landing
-      </Link>
-      <Link className="wood-btn" href="/auth">
-        Auth
-      </Link>
-      <Link className="wood-btn" href="/home">
-        Home
-      </Link>
-      <Link className="wood-btn" href="/play">
-        Play
-      </Link>
-      <Link className="wood-btn" href="/stats">
-        Stats
-      </Link>
-      <Link className="wood-btn" href="/leaderboard">
-        Leaderboard
-      </Link>
-    </nav>
+    <header className="top-nav-wrap">
+      <nav className="top-nav panel" aria-label="Primary navigation">
+        {NAV_ITEMS.map((item) => {
+          const active = pathname === item.href || (item.href === '/play' && pathname === '/');
+          return (
+            <Link key={item.href} className={`top-nav-item ${active ? 'active' : ''}`} href={item.href}>
+              <span aria-hidden>{item.emoji}</span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </header>
   );
 }

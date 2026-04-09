@@ -11,6 +11,6 @@ export async function GET() {
     googleConfigured,
     message: nextAuthConfigured
       ? 'Auth core is configured.'
-      : 'NEXTAUTH_URL and NEXTAUTH_SECRET are required for production auth sessions.'
+      : 'NEXTAUTH_URL plus NEXTAUTH_SECRET (or AUTH_SECRET) are required for production auth sessions.'
   }, { status: nextAuthConfigured ? 200 : 503 });
 }

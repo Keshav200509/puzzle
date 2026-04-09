@@ -37,7 +37,7 @@ When `DATABASE_URL` is missing, DB-backed endpoints return clear `503` responses
 ## Required environment variables
 
 - `DATABASE_URL` → enables Prisma writes and global leaderboard reads.
-- `NEXTAUTH_URL` + `NEXTAUTH_SECRET` → enables NextAuth production sessions.
+- `NEXTAUTH_URL` + `NEXTAUTH_SECRET` (or `AUTH_SECRET`) → enables NextAuth production sessions.
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` → enables Google sign-in.
 
 Without these values, guest mode remains fully playable offline.
@@ -60,3 +60,10 @@ npm run verify
 ## Production roadmap
 
 See `NEXT_STEPS_PRODUCTION.md` for the prioritized path to launch.
+
+
+## Direct push / auto-push notes
+
+- Direct push to `main` only works if repository branch protections/rulesets permit it.
+- There is no safe built-in "auto-push every edit" mode in this repo; use explicit git commits and pushes (or CI automation) to control deployment history.
+- If Vercel logs show old commit hashes, redeploy from the branch/commit that contains the fix.

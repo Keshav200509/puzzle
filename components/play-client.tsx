@@ -15,7 +15,7 @@ import type { PipeGridLevel, PipeGridProgressState } from '@/lib/puzzles/pipe-gr
 import { findConnectedPath, hasConnectedPath } from '@/lib/puzzles/pipe-grid/validator';
 import { PipeGridBoard } from '@/lib/puzzles/pipe-grid/ui/PipeGridBoard';
 import { syncAllPending } from '@/lib/client/sync';
-import { clearPuzzleProgress, getAllDailyActivity, getPuzzleProgress, upsertDailyActivity, upsertPuzzleProgress } from '@/lib/storage/db';
+import { clearPuzzleProgress, getAllDailyActivity, getOrCreatePlayerProfile, getPuzzleProgress, upsertDailyActivity, upsertPuzzleProgress } from '@/lib/storage/db';
 
 const SECRET = 'logic-looper-v1';
 const PUZZLE_TYPE = 'pipe-grid';
@@ -42,6 +42,7 @@ export function PlayClient() {
   const [phase, setPhase] = useState<PlayPhase>('briefing');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [playerName, setPlayerName] = useState('Guest Explorer');
 
   async function loadForDay(dateKey: string) {
     const fixture = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('fixture') : null;
@@ -78,6 +79,12 @@ export function PlayClient() {
   useEffect(() => {
     const forcedDay = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('day') : null;
     setDayKey(forcedDay ?? formatDateKey(new Date()));
+  }, []);
+
+  useEffect(() => {
+    getOrCreatePlayerProfile().then((profile) => {
+      if (profile?.name) setPlayerName(profile.name);
+    });
   }, []);
 
   useEffect(() => {
@@ -151,7 +158,8 @@ export function PlayClient() {
         difficulty: nextLevel.difficulty,
         hintsUsed,
         stars: rating,
-        synced: false
+        synced: false,
+        playerName
       });
       await clearPuzzleProgress(dayKey);
 
@@ -205,7 +213,7 @@ export function PlayClient() {
       <section className="panel game-brief-card">
         <div>
           <h1 style={{ marginTop: 0, marginBottom: 6 }}>Daily Mission • {dayKey}</h1>
-          <p className="muted" style={{ marginBottom: 0 }}>Build a clean tunnel route. Every move matters and fewer moves means higher reward.</p>
+          <p className="muted" style={{ marginBottom: 0 }}>Pilot: <strong>{playerName}</strong> • Build a clean tunnel route. Every move matters and fewer moves means higher reward.</p>
         </div>
         <div className="hud-grid">
           <div><small>Moves</small><strong>{moves}</strong></div>
@@ -222,6 +230,17 @@ export function PlayClient() {
       </section>
 
       <PipeGridBoard level={level} onSlide={handleSlide} path={path} />
+
+
+      <section className="panel challenge-strip">
+        <h3 style={{ margin: '0 0 8px' }}>Mission Targets</h3>
+        <div className="target-strip">
+          <span>🎯 Solve under 40 moves</span>
+          <span>⚡ Use at most 1 hint</span>
+          <span>🏅 Keep streak alive</span>
+          <span>🧠 Plan from end to start</span>
+        </div>
+      </section>
 
       <div className="action-row">
         <button className="wood-btn" onClick={useHint} disabled={hintsUsed >= HINT_LIMIT || solved || phase !== 'playing'}>Hint</button>
