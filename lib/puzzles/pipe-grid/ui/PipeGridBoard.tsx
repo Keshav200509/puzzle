@@ -23,24 +23,30 @@ function isAdjacent(a: GridPosition, b: GridPosition): boolean {
   return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
 }
 
-function tileSvg(tile: Tile) {
+function tileSvg(tile: Tile, onPath: boolean, onPartial: boolean) {
   if (tile.kind === 'empty') return null;
-  const tunnelStroke = 34;
+
+  const tunnelW = 34;
+  const glowColor = onPath ? 'rgba(253,230,138,.55)' : onPartial ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.1)';
 
   if (tile.kind === 'start' || tile.kind === 'end') {
-    const terminal = tile.kind === 'start' ? ['right'] : ['left'];
-    const center = terminal[0] === 'right' ? 'M 50 50 L 100 50' : 'M 0 50 L 50 50';
+    const isStart = tile.kind === 'start';
+    const center = isStart ? 'M 50 50 L 100 50' : 'M 0 50 L 50 50';
+    const label = isStart ? 'S' : 'E';
+    const labelColor = isStart ? '#10b981' : '#f59e0b';
 
     return (
       <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden>
-        <rect x="0" y="0" width="100" height="100" rx="10" fill="url(#wood)" />
-        <path d={center} stroke="#2f1c0d" strokeWidth={38} strokeLinecap="round" fill="none" />
-        <path d={center} stroke="#111827" strokeWidth={tunnelStroke} strokeLinecap="round" fill="none" />
-        {terminal.map((edge) => {
-          const p = EDGE[edge as Direction];
-          return <circle key={edge} cx={p.x} cy={p.y} r="17" fill="#111827" />;
-        })}
-        <text x="50" y="70" fontSize="15" textAnchor="middle" fill="#fef3c7" fontWeight="700">{tile.kind === 'start' ? 'START' : 'END'}</text>
+        <defs>
+          <linearGradient id={`wood-${tile.kind}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1e3a5f" />
+            <stop offset="100%" stopColor="#0f2040" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="100" height="100" rx="8" fill={`url(#wood-${tile.kind})`} />
+        <path d={center} stroke="#0d1f38" strokeWidth={38} strokeLinecap="round" fill="none" />
+        <path d={center} stroke="#111827" strokeWidth={tunnelW} strokeLinecap="round" fill="none" />
+        <text x="50" y="55" fontSize="20" textAnchor="middle" dominantBaseline="middle" fill={labelColor} fontWeight="800" fontFamily="system-ui">{label}</text>
       </svg>
     );
   }
@@ -50,20 +56,20 @@ function tileSvg(tile: Tile) {
 
   return (
     <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden>
-      <rect x="0" y="0" width="100" height="100" rx="10" fill="url(#wood)" />
-      <path d={shape.d} stroke="#2f1c0d" strokeWidth={38} strokeLinecap="round" fill="none" />
-      <path d={shape.d} stroke="#111827" strokeWidth={34} strokeLinecap="round" fill="none" />
-      <path d={shape.d} stroke="rgba(255,255,255,0.16)" strokeWidth={12} strokeLinecap="round" fill="none" />
-      {shape.openings.map((edge) => {
-        const p = EDGE[edge];
-        return <circle key={edge} cx={p.x} cy={p.y} r="17" fill="#111827" />;
-      })}
       <defs>
-        <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#d39a66" />
-          <stop offset="100%" stopColor="#9a5d30" />
+        <linearGradient id="wood-pipe" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1a3a5c" />
+          <stop offset="100%" stopColor="#0e2236" />
         </linearGradient>
       </defs>
+      <rect x="0" y="0" width="100" height="100" rx="8" fill="url(#wood-pipe)" />
+      <path d={shape.d} stroke="#0d1f38" strokeWidth={38} strokeLinecap="round" fill="none" />
+      <path d={shape.d} stroke="#1e3a5f" strokeWidth={34} strokeLinecap="round" fill="none" />
+      <path d={shape.d} stroke={glowColor} strokeWidth={10} strokeLinecap="round" fill="none" />
+      {shape.openings.map((edge) => {
+        const p = EDGE[edge];
+        return <circle key={edge} cx={p.x} cy={p.y} r="15" fill="#0d1f38" />;
+      })}
     </svg>
   );
 }
@@ -71,67 +77,109 @@ function tileSvg(tile: Tile) {
 export function PipeGridBoard({
   level,
   onSlide,
-  path = []
+  path = [],
+  partialPath = [],
+  hintTile = null
 }: {
   level: PipeGridLevel;
   onSlide: (from: GridPosition) => void;
   path?: GridPosition[];
+  partialPath?: GridPosition[];
+  hintTile?: GridPosition | null;
 }) {
+  const pathSet = useMemo(
+    () => new Set(path.map((p) => `${p.row}:${p.col}`)),
+    [path]
+  );
+  const partialSet = useMemo(
+    () => new Set(partialPath.map((p) => `${p.row}:${p.col}`)),
+    [partialPath]
+  );
+
   const cells = useMemo(
     () =>
       level.tiles.flatMap((row, rowIndex) =>
-        row.map((tile, colIndex) => ({
-          tile,
-          rowIndex,
-          colIndex,
-          canMove: tile.kind !== 'empty' && !tile.locked && isAdjacent(level.empty, { row: rowIndex, col: colIndex })
-        }))
+        row.map((tile, colIndex) => {
+          const key = `${rowIndex}:${colIndex}`;
+          return {
+            tile,
+            rowIndex,
+            colIndex,
+            canMove:
+              tile.kind !== 'empty' &&
+              !tile.locked &&
+              isAdjacent(level.empty, { row: rowIndex, col: colIndex }),
+            onPath: pathSet.has(key),
+            onPartial: !pathSet.has(key) && partialSet.has(key),
+            isHint: hintTile?.row === rowIndex && hintTile?.col === colIndex
+          };
+        })
       ),
-    [level]
+    [level, pathSet, partialSet, hintTile]
   );
 
   const unit = 100;
-  const pathPoints = path.map((point) => `${point.col * unit + unit / 2},${point.row * unit + unit / 2}`).join(' ');
-  const pathD = path.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.col * unit + unit / 2} ${point.row * unit + unit / 2}`).join(' ');
+  const pathD = path
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.col * unit + unit / 2} ${p.row * unit + unit / 2}`)
+    .join(' ');
+  const pathPoints = path
+    .map((p) => `${p.col * unit + unit / 2},${p.row * unit + unit / 2}`)
+    .join(' ');
 
   return (
     <div className="pipe-board-shell">
-      <p className="muted pipe-objective">Objective: Slide tiles and connect START ➜ END in as few moves as possible.</p>
+      <p className="pipe-objective">Slide tiles · Connect START → END · Fewest moves wins</p>
       <div className="pipe-grid-wrap">
         <div
           className="pipe-grid"
-          style={{
-            gridTemplateColumns: `repeat(${level.size}, minmax(54px, 1fr))`
-          }}
+          style={{ gridTemplateColumns: `repeat(${level.size}, 1fr)` }}
         >
-          {cells.map(({ tile, rowIndex, colIndex, canMove }) => (
-            <button
-              key={`${rowIndex}-${colIndex}-${tile.id}`}
-              type="button"
-              disabled={!canMove}
-              onClick={() => onSlide({ row: rowIndex, col: colIndex })}
-              className={`pipe-tile ${tile.kind === 'empty' ? 'empty' : ''} ${tile.locked ? 'locked' : ''} ${canMove ? 'movable' : ''}`}
-              aria-label={`tile-${rowIndex}-${colIndex}`}
-            >
-              {tileSvg(tile)}
-            </button>
-          ))}
+          {cells.map(({ tile, rowIndex, colIndex, canMove, onPath, onPartial, isHint }) => {
+            const classes = [
+              'pipe-tile',
+              tile.kind === 'empty' ? 'empty' : '',
+              tile.locked ? 'locked' : '',
+              canMove ? 'movable' : '',
+              onPartial ? 'on-partial-path' : '',
+              isHint ? 'hint-tile' : ''
+            ]
+              .filter(Boolean)
+              .join(' ');
+
+            return (
+              <button
+                key={`${rowIndex}-${colIndex}-${tile.id}`}
+                type="button"
+                disabled={!canMove}
+                onClick={() => onSlide({ row: rowIndex, col: colIndex })}
+                className={classes}
+                aria-label={`tile-${rowIndex}-${colIndex}`}
+              >
+                {tileSvg(tile, onPath, onPartial)}
+              </button>
+            );
+          })}
         </div>
 
         {path.length > 1 && (
-          <svg width="100%" height="100%" viewBox={`0 0 ${level.size * unit} ${level.size * unit}`} className="pipe-path-overlay">
+          <svg
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${level.size * unit} ${level.size * unit}`}
+            className="pipe-path-overlay"
+          >
             <polyline
               className="path-glow"
               points={pathPoints}
               fill="none"
-              stroke="rgba(250,204,21,.88)"
-              strokeWidth="14"
+              stroke="rgba(250,204,21,.75)"
+              strokeWidth="12"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             <path d={pathD} fill="none" stroke="transparent" id="solve-route" />
-            <circle r="10" fill="#fde68a" className="route-ball">
-              <animateMotion dur="1.9s" repeatCount="indefinite" rotate="auto">
+            <circle r="9" fill="#fde68a" className="route-ball">
+              <animateMotion dur="1.8s" repeatCount="indefinite" rotate="auto">
                 <mpath href="#solve-route" />
               </animateMotion>
             </circle>
