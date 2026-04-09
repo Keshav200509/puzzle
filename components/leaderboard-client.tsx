@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { signIn, useSession } from 'next-auth/react';
-import { BottomNav } from '@/components/bottom-nav';
 import { formatDateKey } from '@/lib/core/date';
 import type { DailyActivityRecord } from '@/lib/storage/db';
 import { getAllDailyActivity } from '@/lib/storage/db';

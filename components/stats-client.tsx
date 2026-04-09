@@ -1,8 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import { BottomNav } from '@/components/bottom-nav';
 import { syncAllPending } from '@/lib/client/sync';
 import { formatDateKey } from '@/lib/core/date';
 import { buildHeatmapGrid } from '@/lib/core/heatmap';
@@ -60,6 +60,9 @@ export function StatsClient() {
       <div className="stats-phone-shell phone-shell-guard max-w-md mx-auto">
         <section className="panel stats-header">
           <h1 style={{ margin: 0 }}>Stats</h1>
+          <div className="action-row" style={{ marginBottom: 10 }}>
+            <Link href="/home" className="ghost-btn">← Back to HQ</Link>
+          </div>
           <div className="stats-kpi-grid">
             <div><small>Current streak</small><strong>{streak}</strong></div>
             <div><small>Best streak</small><strong>{bestStreak}</strong></div>
@@ -126,8 +129,6 @@ export function StatsClient() {
           </div>
         </section>
       </div>
-
-      <BottomNav />
     </main>
   );
 }
