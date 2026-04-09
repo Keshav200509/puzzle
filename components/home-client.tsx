@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
-import { TheGridLogo } from '@/components/the-grid-logo';
 import { formatDateKey } from '@/lib/core/date';
 import { calculateBestStreak, calculateStreak } from '@/lib/core/streak';
 import { getAllDailyActivity, getAllLevelRuns, getOrCreatePlayerProfile, upsertPlayerProfile } from '@/lib/storage/db';
@@ -12,15 +11,18 @@ import { getAllDailyActivity, getAllLevelRuns, getOrCreatePlayerProfile, upsertP
 export function HomeClient() {
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
+  const [totalSolves, setTotalSolves] = useState(0);
   const [levelRuns, setLevelRuns] = useState(0);
   const [starCount, setStarCount] = useState(0);
+  const [todaySolved, setTodaySolved] = useState(false);
   const { data: session } = useSession();
   const [today, setToday] = useState('');
   const [callsign, setCallsign] = useState('');
   const [savingCallsign, setSavingCallsign] = useState(false);
 
   useEffect(() => {
-    setToday(formatDateKey(new Date()));
+    const todayKey = formatDateKey(new Date());
+    setToday(todayKey);
 
     getOrCreatePlayerProfile().then((profile) => {
       if (profile) setCallsign(profile.name);
@@ -30,6 +32,8 @@ export function HomeClient() {
       const map = Object.fromEntries(items.map((item) => [item.date, { solved: item.solved }]));
       setStreak(calculateStreak(map));
       setBestStreak(calculateBestStreak(map));
+      setTotalSolves(items.filter((i) => i.solved).length);
+      setTodaySolved(Boolean(map[todayKey]?.solved));
     });
 
     getAllLevelRuns().then((runs) => {
@@ -50,20 +54,33 @@ export function HomeClient() {
 
   return (
     <main className="page-shell game-page">
-      <header className="panel dashboard-header">
-        <TheGridLogo size={72} />
-        <div>
-          <h1 style={{ margin: 0 }}>Command Center</h1>
-          <p style={{ margin: '4px 0 0', opacity: 0.9 }}>Daily mission board: {today}</p>
-          <div className="action-row" style={{ marginTop: 8 }}>
-            {session ? (
-              <>
-                <span className="muted">Signed in as {session.user?.name ?? session.user?.email ?? 'Player'}</span>
-                <button className="ghost-btn" onClick={() => signOut({ callbackUrl: '/auth' })}>Sign out</button>
-              </>
-            ) : (
-              <button className="ghost-btn" onClick={() => signIn(undefined, { callbackUrl: '/auth' })}>Sign in</button>
-            )}
+
+      {/* ── Streak hero (primary motivation, LinkedIn-style) ── */}
+      <section className="panel streak-hero" style={{ marginBottom: 10 }}>
+        <span className="streak-number">{streak}</span>
+        <span className="streak-label">🔥 Day streak</span>
+        {streak === 0 && (
+          <p className="muted" style={{ marginTop: 8, fontSize: '0.82rem' }}>
+            Play today to start your streak!
+          </p>
+        )}
+        {streak > 0 && bestStreak > streak && (
+          <p className="muted" style={{ marginTop: 6, fontSize: '0.78rem' }}>
+            Best: {bestStreak} days
+          </p>
+        )}
+      </section>
+
+      {/* ── Today's puzzle CTA ── */}
+      <div className="daily-cta">
+        <h2 style={{ marginBottom: 4 }}>
+          {todaySolved ? '✅ Completed!' : "Today's Puzzle"}
+        </h2>
+        <span className="daily-date">{today}</span>
+        {todaySolved ? (
+          <div className="action-row" style={{ justifyContent: 'center' }}>
+            <Link href="/stats" className="wood-btn">View My Stats</Link>
+            <Link href="/play" className="ghost-btn">Replay</Link>
           </div>
           <div className="action-row" style={{ marginTop: 6 }}>
             <input
@@ -77,22 +94,61 @@ export function HomeClient() {
               {savingCallsign ? 'Saving…' : 'Save Callsign'}
             </button>
           </div>
-        </div>
-      </header>
+        ) : (
+          <Link href="/play" className="wood-btn" style={{ display: 'inline-block', marginTop: 0 }}>
+            Play Now →
+          </Link>
+        )}
+      </div>
 
-      <section className="panel hero-card">
-        <h2 style={{ marginTop: 0 }}>Game Workflow</h2>
-        <div className="cover-flow">
-          <article><strong>Mission</strong><span>Choose Daily or Campaign level.</span></article>
-          <article><strong>Play</strong><span>Slide pieces to create a full tunnel.</span></article>
-          <article><strong>Progress</strong><span>Stars unlock harder levels.</span></article>
+      {/* ── Quick stats ── */}
+      <div className="kpi-row" style={{ marginBottom: 12 }}>
+        <div className="kpi-card">
+          <span className="kpi-value">{totalSolves}</span>
+          <span className="kpi-label">Solved</span>
         </div>
-        <div className="action-row">
-          <Link href="/play" className="wood-btn">Play Daily</Link>
-          <Link href="/levels" className="ghost-btn">Open Campaign</Link>
+        <div className="kpi-card">
+          <span className="kpi-value">{bestStreak}</span>
+          <span className="kpi-label">Best streak</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-value">{starCount}</span>
+          <span className="kpi-label">Stars</span>
+        </div>
+      </div>
+
+      {/* ── Game modes ── */}
+      <section className="panel" style={{ marginBottom: 10 }}>
+        <h2 style={{ marginTop: 0 }}>Play Modes</h2>
+        <div className="mode-grid">
+          <article>
+            <span className="mode-icon">🧩</span>
+            <div>
+              <strong>Daily Puzzle</strong>
+              <span>One new puzzle every day. Compete globally.</span>
+            </div>
+          </article>
+          <article>
+            <span className="mode-icon">🗺️</span>
+            <div>
+              <strong>Campaign</strong>
+              <span>Progressive levels that get harder as you advance.</span>
+            </div>
+          </article>
+          <article>
+            <span className="mode-icon">🏆</span>
+            <div>
+              <strong>Leaderboard</strong>
+              <span>See how your scores stack up globally.</span>
+            </div>
+          </article>
+        </div>
+        <div className="action-row" style={{ marginTop: 12 }}>
+          <Link href="/play" className="wood-btn">Daily Puzzle</Link>
+          <Link href="/levels" className="ghost-btn">Campaign (Lvl {nextLevel})</Link>
+          <Link href="/leaderboard" className="ghost-btn">Leaderboard</Link>
         </div>
       </section>
-
 
       <section className="panel hero-card">
         <h2 style={{ marginTop: 0 }}>Play Modes</h2>
@@ -120,6 +176,23 @@ export function HomeClient() {
         <article className="panel stat-card"><h3>🌟 Best Streak</h3><p>{bestStreak} days</p></article>
         <article className="panel stat-card"><h3>🧱 Campaign</h3><p>Next level: {nextLevel}</p><Link href="/levels" className="ghost-btn">Continue</Link></article>
         <article className="panel stat-card"><h3>🎁 Rewards</h3><p>{starCount} stars collected</p><div className="progress-track"><span style={{ width: `${Math.min(100, starCount * 4)}%` }} /></div></article>
+      {/* ── Account ── */}
+      <section className="panel" style={{ marginBottom: 10, fontSize: '0.875rem' }}>
+        {session ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span className="muted">Signed in as <strong style={{ color: 'var(--text)' }}>{session.user?.name ?? session.user?.email}</strong></span>
+            <button className="ghost-btn" onClick={() => signOut({ callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>Sign out</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span className="muted">Sign in to sync your progress and join global rankings.</span>
+            <button className="ghost-btn" onClick={() => signIn(undefined, { callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>Sign in</button>
+          </div>
+        )}
+        <div className="progress-track" style={{ marginTop: 12 }}>
+          <span style={{ width: `${Math.min(100, starCount * 3)}%` }} />
+        </div>
+        <p className="muted" style={{ marginTop: 4, fontSize: '0.72rem' }}>{starCount} stars collected</p>
       </section>
 
       <BottomNav />

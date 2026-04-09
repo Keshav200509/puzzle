@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { TheGridLogo } from './the-grid-logo';
 
 export function AuthClient({ googleConfigured, nextAuthConfigured }: { googleConfigured: boolean; nextAuthConfigured: boolean }) {
-  const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [message, setMessage] = useState('');
   const signInAvailable = googleConfigured && nextAuthConfigured;
 
@@ -26,26 +25,17 @@ export function AuthClient({ googleConfigured, nextAuthConfigured }: { googleCon
       <div className="onboarding-pattern" />
       <section className="glass-card" style={{ maxWidth: 440 }}>
         <TheGridLogo size={92} style={{ margin: '0 auto 8px', display: 'block' }} />
-        <h1 style={{ marginTop: 0, textAlign: 'center' }}>{tab === 'login' ? 'Sign in to The Grid' : 'Create your Grid account'}</h1>
-        <div className="action-row" style={{ justifyContent: 'center', marginBottom: 8 }}>
-          <button className={`ghost-btn ${tab === 'login' ? 'active' : ''}`} onClick={() => setTab('login')}>Login</button>
-          <button className={`ghost-btn ${tab === 'signup' ? 'active' : ''}`} onClick={() => setTab('signup')}>Signup</button>
-        </div>
+        <h1 style={{ marginTop: 0, textAlign: 'center' }}>Sign in to The Grid</h1>
 
-        <label className="field-label">Email</label>
-        <input className="game-input" placeholder="you@example.com" />
-        <label className="field-label">Password</label>
-        <input className="game-input" type="password" placeholder="••••••••" />
-        {tab === 'signup' && (
-          <>
-            <label className="field-label">Confirm Password</label>
-            <input className="game-input" type="password" placeholder="••••••••" />
-          </>
+        <button className="wood-btn" style={{ width: '100%', marginTop: 10 }} onClick={handleGoogle} disabled={!signInAvailable}>
+          Sign in with Google
+        </button>
+
+        {!signInAvailable && (
+          <p className="muted" style={{ marginTop: 8 }}>
+            Sign-in unavailable (not configured). Set NEXTAUTH_URL, NEXTAUTH_SECRET, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.
+          </p>
         )}
-
-        <button className="wood-btn" style={{ width: '100%', marginTop: 10 }}>{tab === 'login' ? 'Login' : 'Create account'}</button>
-        <button className="ghost-btn" style={{ width: '100%', marginTop: 8 }} onClick={handleGoogle} disabled={!signInAvailable}>Sign in with Google</button>
-        {!signInAvailable && <p className="muted">Sign-in unavailable (not configured). Set NEXTAUTH_URL, NEXTAUTH_SECRET, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.</p>}
         {message && <p className="muted">{message}</p>}
 
         <p className="muted" style={{ marginTop: 10 }}>

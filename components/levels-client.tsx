@@ -161,6 +161,8 @@ export function LevelsClient() {
       <section className="panel game-brief-card">
         <h1 style={{ marginTop: 0 }}>Campaign Level {levelNumber}</h1>
         <p className="muted">{chapter} • Difficulty {levelConfig(levelNumber).difficulty} • Pilot: <strong>{playerName}</strong></p>
+        <p className="muted">{chapter} • Difficulty {levelConfig(levelNumber).difficulty} • Target: clean tunnel routing.</p>
+
 
         <div className="flow-row">
           {roadmap.map((step) => (
