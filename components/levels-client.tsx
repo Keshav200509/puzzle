@@ -6,10 +6,10 @@ import { BottomNav } from '@/components/bottom-nav';
 import { computeDailyScore, computeStars } from '@/lib/core/scoring';
 import { createSeedHash } from '@/lib/core/seed';
 import { syncAllPending } from '@/lib/client/sync';
-import { addLevelRun, getAllLevelRuns, upsertPuzzleProgress } from '@/lib/storage/db';
-import { canSlide, slideTile, toProgressState } from '@/lib/puzzles/pipe-grid/gameplay';
+import { addLevelRun, clearPuzzleProgress, getAllLevelRuns, getOrCreatePlayerProfile, getPuzzleProgress, upsertPuzzleProgress } from '@/lib/storage/db';
+import { applyProgress, canSlide, slideTile, toProgressState } from '@/lib/puzzles/pipe-grid/gameplay';
 import { generatePipeGrid, levelConfig, levelTargets } from '@/lib/puzzles/pipe-grid/generator';
-import type { PipeGridLevel } from '@/lib/puzzles/pipe-grid/types';
+import type { PipeGridLevel, PipeGridProgressState } from '@/lib/puzzles/pipe-grid/types';
 import { hasConnectedPath } from '@/lib/puzzles/pipe-grid/validator';
 import { PipeGridBoard } from '@/lib/puzzles/pipe-grid/ui/PipeGridBoard';
 
@@ -22,7 +22,6 @@ function pulseFeedback(pattern: number | number[]) {
   navigator.vibrate(pattern);
 }
 
-
 export function LevelsClient() {
   const { data: session } = useSession();
   const [levelNumber, setLevelNumber] = useState(1);
@@ -32,8 +31,14 @@ export function LevelsClient() {
   const [best, setBest] = useState<{ score: number; moves: number } | null>(null);
   const [runs, setRuns] = useState<Record<number, { stars: number; moves: number }>>({});
   const [phase, setPhase] = useState<Phase>('briefing');
+  const [playerName, setPlayerName] = useState('Guest Explorer');
 
-  const unlockedLevel = useMemo(() => Math.max(1, Object.keys(runs).length + 1), [runs]);
+  const unlockedLevel = useMemo(() => {
+    const solvedLevels = Object.keys(runs).map((value) => Number(value));
+    const highestSolved = solvedLevels.length ? Math.max(...solvedLevels) : 0;
+    return Math.max(1, highestSolved + 1);
+  }, [runs]);
+
   const chapter = useMemo(() => {
     if (levelNumber <= 5) return 'Copper District';
     if (levelNumber <= 10) return 'Steam Harbor';
@@ -56,10 +61,14 @@ export function LevelsClient() {
   const load = useCallback(async (levelNo: number) => {
     const cfg = levelConfig(levelNo);
     const seed = await createSeedHash(`level-${levelNo}`, SECRET);
-    setBoard(generatePipeGrid(seed, cfg));
-    setMoves(0);
-    setHintsUsed(0);
-    setPhase('briefing');
+    const fresh = generatePipeGrid(seed, cfg);
+    const progress = await getPuzzleProgress(`level-${levelNo}`);
+    const resumed = progress?.puzzleType === 'pipe-grid-level' ? applyProgress(fresh, progress.state as PipeGridProgressState) : fresh;
+
+    setBoard(resumed);
+    setMoves(progress?.moves ?? 0);
+    setHintsUsed(progress?.hintsUsed ?? 0);
+    setPhase(progress ? 'playing' : 'briefing');
 
     const run = runs[levelNo];
     setBest(run ? { score: computeDailyScore(run.moves + levelNo * 2, 0), moves: run.moves } : null);
@@ -67,6 +76,9 @@ export function LevelsClient() {
 
   useEffect(() => {
     refreshRuns();
+    getOrCreatePlayerProfile().then((profile) => {
+      if (profile?.name) setPlayerName(profile.name);
+    });
   }, [refreshRuns]);
 
   useEffect(() => {
@@ -94,8 +106,11 @@ export function LevelsClient() {
         hintsUsed,
         stars,
         playedAt: Date.now(),
-        synced: false
+        synced: false,
+        playerName
       });
+
+      await clearPuzzleProgress(`level-${levelNumber}`);
 
       if (session && navigator.onLine) {
         await syncAllPending({ online: navigator.onLine, signedIn: Boolean(session) }).catch(() => undefined);
@@ -123,9 +138,14 @@ export function LevelsClient() {
   }
 
   async function nextStage() {
-    const target = Math.min(unlockedLevel, levelNumber + 1);
+    const target = Math.min(Math.max(unlockedLevel, levelNumber + 1), 20);
     setLevelNumber(target);
     await load(target);
+  }
+
+  async function restartLevel() {
+    await clearPuzzleProgress(`level-${levelNumber}`);
+    await load(levelNumber);
   }
 
   if (!board) return <main className="page-shell game-page">Loading level…</main>;
@@ -140,7 +160,9 @@ export function LevelsClient() {
     <main className="page-shell game-page">
       <section className="panel game-brief-card">
         <h1 style={{ marginTop: 0 }}>Campaign Level {levelNumber}</h1>
+        <p className="muted">{chapter} • Difficulty {levelConfig(levelNumber).difficulty} • Pilot: <strong>{playerName}</strong></p>
         <p className="muted">{chapter} • Difficulty {levelConfig(levelNumber).difficulty} • Target: clean tunnel routing.</p>
+
 
         <div className="flow-row">
           {roadmap.map((step) => (
@@ -189,6 +211,7 @@ export function LevelsClient() {
         <button className="ghost-btn" onClick={() => setLevelNumber((v) => Math.max(1, v - 1))}>Prev</button>
         <button className="ghost-btn" onClick={() => setLevelNumber((v) => Math.min(unlockedLevel, v + 1))}>Next</button>
         <button className="wood-btn" onClick={() => setHintsUsed((v) => Math.min(HINT_LIMIT, v + 1))} disabled={hintsUsed >= HINT_LIMIT || phase !== 'playing'}>Use Hint</button>
+        <button className="ghost-btn" onClick={restartLevel}>Restart</button>
       </div>
 
       {phase === 'briefing' && (
@@ -208,7 +231,7 @@ export function LevelsClient() {
             <p>Great routing! Your best run was saved.</p>
             <div className="action-row">
               <button className="wood-btn" onClick={nextStage}>Next Stage</button>
-              <button className="ghost-btn" onClick={() => load(levelNumber)}>Replay</button>
+              <button className="ghost-btn" onClick={restartLevel}>Replay</button>
             </div>
           </div>
         </div>

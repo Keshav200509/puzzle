@@ -15,6 +15,7 @@ import type { PipeGridLevel, PipeGridProgressState } from '@/lib/puzzles/pipe-gr
 import { findConnectedPath, findReachableFromStart, hasConnectedPath } from '@/lib/puzzles/pipe-grid/validator';
 import { PipeGridBoard } from '@/lib/puzzles/pipe-grid/ui/PipeGridBoard';
 import { syncAllPending } from '@/lib/client/sync';
+import { clearPuzzleProgress, getAllDailyActivity, getOrCreatePlayerProfile, getPuzzleProgress, upsertDailyActivity, upsertPuzzleProgress } from '@/lib/storage/db';
 import {
   clearPuzzleProgress,
   getAllDailyActivity,
@@ -78,6 +79,7 @@ export function PlayClient() {
   const [phase, setPhase] = useState<PlayPhase>('briefing');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [playerName, setPlayerName] = useState('Guest Explorer');
   const [copied, setCopied] = useState(false);
 
   async function loadForDay(dateKey: string) {
@@ -129,6 +131,12 @@ export function PlayClient() {
         ? new URLSearchParams(window.location.search).get('day')
         : null;
     setDayKey(forcedDay ?? formatDateKey(new Date()));
+  }, []);
+
+  useEffect(() => {
+    getOrCreatePlayerProfile().then((profile) => {
+      if (profile?.name) setPlayerName(profile.name);
+    });
   }, []);
 
   useEffect(() => {
@@ -204,7 +212,8 @@ export function PlayClient() {
         difficulty: nextLevel.difficulty,
         hintsUsed,
         stars: rating,
-        synced: false
+        synced: false,
+        playerName
       });
       await clearPuzzleProgress(dayKey);
 
@@ -280,6 +289,9 @@ export function PlayClient() {
     <main className="page-shell game-page">
 
       <section className="panel game-brief-card">
+        <div>
+          <h1 style={{ marginTop: 0, marginBottom: 6 }}>Daily Mission • {dayKey}</h1>
+          <p className="muted" style={{ marginBottom: 0 }}>Pilot: <strong>{playerName}</strong> • Build a clean tunnel route. Every move matters and fewer moves means higher reward.</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h1 style={{ marginBottom: 2 }}>Daily Puzzle</h1>
@@ -315,6 +327,21 @@ export function PlayClient() {
         hintTile={hintTile}
       />
 
+
+      <section className="panel challenge-strip">
+        <h3 style={{ margin: '0 0 8px' }}>Mission Targets</h3>
+        <div className="target-strip">
+          <span>🎯 Solve under 40 moves</span>
+          <span>⚡ Use at most 1 hint</span>
+          <span>🏅 Keep streak alive</span>
+          <span>🧠 Plan from end to start</span>
+        </div>
+      </section>
+
+      <div className="action-row">
+        <button className="wood-btn" onClick={useHint} disabled={hintsUsed >= HINT_LIMIT || solved || phase !== 'playing'}>Hint</button>
+        <button className="ghost-btn" onClick={restart}>Restart</button>
+        <Link className="ghost-btn" href="/levels">Level Mode</Link>
       <div className="action-row" style={{ justifyContent: 'center' }}>
         <button
           className="ghost-btn"

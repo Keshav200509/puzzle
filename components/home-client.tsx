@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { formatDateKey } from '@/lib/core/date';
 import { calculateBestStreak, calculateStreak } from '@/lib/core/streak';
-import { getAllDailyActivity, getAllLevelRuns } from '@/lib/storage/db';
+import { getAllDailyActivity, getAllLevelRuns, getOrCreatePlayerProfile, upsertPlayerProfile } from '@/lib/storage/db';
 
 export function HomeClient() {
   const [streak, setStreak] = useState(0);
@@ -17,10 +17,16 @@ export function HomeClient() {
   const [todaySolved, setTodaySolved] = useState(false);
   const { data: session } = useSession();
   const [today, setToday] = useState('');
+  const [callsign, setCallsign] = useState('');
+  const [savingCallsign, setSavingCallsign] = useState(false);
 
   useEffect(() => {
     const todayKey = formatDateKey(new Date());
     setToday(todayKey);
+
+    getOrCreatePlayerProfile().then((profile) => {
+      if (profile) setCallsign(profile.name);
+    });
 
     getAllDailyActivity().then((items) => {
       const map = Object.fromEntries(items.map((item) => [item.date, { solved: item.solved }]));
@@ -35,6 +41,14 @@ export function HomeClient() {
       setStarCount(runs.reduce((acc, run) => acc + (run.stars ?? 0), 0));
     });
   }, []);
+
+
+  async function saveCallsign() {
+    setSavingCallsign(true);
+    const profile = await upsertPlayerProfile(callsign);
+    if (profile) setCallsign(profile.name);
+    setSavingCallsign(false);
+  }
 
   const nextLevel = useMemo(() => Math.max(1, Math.floor(levelRuns / 2) + 1), [levelRuns]);
 
@@ -67,6 +81,18 @@ export function HomeClient() {
           <div className="action-row" style={{ justifyContent: 'center' }}>
             <Link href="/stats" className="wood-btn">View My Stats</Link>
             <Link href="/play" className="ghost-btn">Replay</Link>
+          </div>
+          <div className="action-row" style={{ marginTop: 6 }}>
+            <input
+              className="game-input callsign-input"
+              value={callsign}
+              onChange={(e) => setCallsign(e.target.value)}
+              placeholder="Set your callsign"
+              maxLength={24}
+            />
+            <button className="ghost-btn" onClick={saveCallsign} disabled={savingCallsign}>
+              {savingCallsign ? 'Saving…' : 'Save Callsign'}
+            </button>
           </div>
         ) : (
           <Link href="/play" className="wood-btn" style={{ display: 'inline-block', marginTop: 0 }}>
@@ -124,6 +150,32 @@ export function HomeClient() {
         </div>
       </section>
 
+      <section className="panel hero-card">
+        <h2 style={{ marginTop: 0 }}>Play Modes</h2>
+        <div className="mode-grid">
+          <article>
+            <strong>Daily Mission</strong>
+            <span>One handcrafted puzzle every day with streak rewards.</span>
+            <Link href="/play" className="ghost-btn">Play Daily</Link>
+          </article>
+          <article>
+            <strong>Campaign Route</strong>
+            <span>Progressive stages inspired by board-game journey maps.</span>
+            <Link href="/levels" className="ghost-btn">Continue Campaign</Link>
+          </article>
+          <article>
+            <strong>Arena Ranking</strong>
+            <span>Compare your tactical speed and stars with global players.</span>
+            <Link href="/leaderboard" className="ghost-btn">Open Arena</Link>
+          </article>
+        </div>
+      </section>
+
+      <section className="dashboard-grid">
+        <article className="panel stat-card"><h3>🔥 Current Streak</h3><p>{streak} days</p></article>
+        <article className="panel stat-card"><h3>🌟 Best Streak</h3><p>{bestStreak} days</p></article>
+        <article className="panel stat-card"><h3>🧱 Campaign</h3><p>Next level: {nextLevel}</p><Link href="/levels" className="ghost-btn">Continue</Link></article>
+        <article className="panel stat-card"><h3>🎁 Rewards</h3><p>{starCount} stars collected</p><div className="progress-track"><span style={{ width: `${Math.min(100, starCount * 4)}%` }} /></div></article>
       {/* ── Account ── */}
       <section className="panel" style={{ marginBottom: 10, fontSize: '0.875rem' }}>
         {session ? (
