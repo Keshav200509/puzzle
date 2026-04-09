@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
+  id           String            @id @default(cuid())
+  email        String            @unique
   name         String?
   image        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
   dailyScores  DailyScore[]
   levelScores  LevelScore[]
+  achievements UserAchievement[]
 }
 
 model DailyScore {
@@ -50,4 +51,16 @@ model LevelScore {
 
   @@unique([userId, level])
   @@index([level])
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
 }

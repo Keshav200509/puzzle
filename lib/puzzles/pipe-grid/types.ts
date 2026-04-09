@@ -6,7 +6,12 @@ export type PipeShape =
   | 'corner-ur'
   | 'corner-rd'
   | 'corner-dl'
-  | 'corner-lu';
+  | 'corner-lu'
+  | 't-up'
+  | 't-right'
+  | 't-down'
+  | 't-left'
+  | 'cross';
 
 export type Tile = {
   id: string;
