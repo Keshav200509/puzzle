@@ -23,8 +23,11 @@ export function HomeClient() {
   const [levelRuns, setLevelRuns] = useState(0);
   const [starCount, setStarCount] = useState(0);
   const [todaySolved, setTodaySolved] = useState(false);
+<<<<<<< claude/mobile-first-puzzle-improvements
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [syncedFromServer, setSyncedFromServer] = useState(false);
+=======
+>>>>>>> main
   const { data: session } = useSession();
   const [today, setToday] = useState('');
 
@@ -84,7 +87,11 @@ export function HomeClient() {
   return (
     <main className="page-shell game-page">
 
+<<<<<<< claude/mobile-first-puzzle-improvements
       {/* ── Streak hero ── */}
+=======
+      {/* ── Streak hero (primary motivation, LinkedIn-style) ── */}
+>>>>>>> main
       <section className="panel streak-hero" style={{ marginBottom: 10 }}>
         <span className="streak-number">{streak}</span>
         <span className="streak-label">🔥 Day streak</span>
@@ -98,11 +105,14 @@ export function HomeClient() {
             Best: {bestStreak} days
           </p>
         )}
+<<<<<<< claude/mobile-first-puzzle-improvements
         {syncedFromServer && (
           <p className="muted" style={{ marginTop: 4, fontSize: '0.72rem', opacity: 0.7 }}>
             ☁ Synced from account
           </p>
         )}
+=======
+>>>>>>> main
       </section>
 
       {/* ── Today's puzzle CTA ── */}
@@ -113,7 +123,11 @@ export function HomeClient() {
         <span className="daily-date">{today}</span>
         {todaySolved ? (
           <div className="action-row" style={{ justifyContent: 'center' }}>
+<<<<<<< claude/mobile-first-puzzle-improvements
             <Link href="/stats" className="wood-btn">View Stats</Link>
+=======
+            <Link href="/stats" className="wood-btn">View My Stats</Link>
+>>>>>>> main
             <Link href="/play" className="ghost-btn">Replay</Link>
           </div>
         ) : (
@@ -123,11 +137,16 @@ export function HomeClient() {
         )}
       </div>
 
+<<<<<<< claude/mobile-first-puzzle-improvements
       {/* ── Quick KPI stats ── */}
+=======
+      {/* ── Quick stats ── */}
+>>>>>>> main
       <div className="kpi-row" style={{ marginBottom: 12 }}>
         <div className="kpi-card">
           <span className="kpi-value">{totalSolves}</span>
           <span className="kpi-label">Solved</span>
+<<<<<<< claude/mobile-first-puzzle-improvements
         </div>
         <div className="kpi-card">
           <span className="kpi-value">{bestStreak}</span>
@@ -137,6 +156,17 @@ export function HomeClient() {
           <span className="kpi-value">{starCount}</span>
           <span className="kpi-label">Stars ⭐</span>
         </div>
+=======
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-value">{bestStreak}</span>
+          <span className="kpi-label">Best streak</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-value">{starCount}</span>
+          <span className="kpi-label">Stars</span>
+        </div>
+>>>>>>> main
       </div>
 
       {/* ── Game modes ── */}
@@ -154,7 +184,11 @@ export function HomeClient() {
             <span className="mode-icon">🗺️</span>
             <div>
               <strong>Campaign</strong>
+<<<<<<< claude/mobile-first-puzzle-improvements
               <span>50 levels across 7 chapters — from Copper to Apex.</span>
+=======
+              <span>Progressive levels that get harder as you advance.</span>
+>>>>>>> main
             </div>
           </article>
           <article>
@@ -175,6 +209,7 @@ export function HomeClient() {
       {/* ── Account ── */}
       <section className="panel" style={{ marginBottom: 10, fontSize: '0.875rem' }}>
         {session ? (
+<<<<<<< claude/mobile-first-puzzle-improvements
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <span className="muted">
@@ -207,6 +242,16 @@ export function HomeClient() {
             <button className="ghost-btn" onClick={() => signIn(undefined, { callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>
               Sign in
             </button>
+=======
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span className="muted">Signed in as <strong style={{ color: 'var(--text)' }}>{session.user?.name ?? session.user?.email}</strong></span>
+            <button className="ghost-btn" onClick={() => signOut({ callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>Sign out</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <span className="muted">Sign in to sync your progress and join global rankings.</span>
+            <button className="ghost-btn" onClick={() => signIn(undefined, { callbackUrl: '/auth' })} style={{ minHeight: 36, padding: '0 14px', fontSize: '0.82rem' }}>Sign in</button>
+>>>>>>> main
           </div>
         )}
         <div className="progress-track" style={{ marginTop: 12 }}>
