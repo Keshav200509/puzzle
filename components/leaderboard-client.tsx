@@ -6,6 +6,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { formatDateKey } from '@/lib/core/date';
 import type { DailyActivityRecord } from '@/lib/storage/db';
 import { getAllDailyActivity } from '@/lib/storage/db';
+import { BottomNav } from '@/components/bottom-nav';
 
 type SortMode = 'moves' | 'score';
 type ScopeMode = 'daily' | 'levels';
@@ -134,7 +135,7 @@ export function LeaderboardClient() {
             {ranked.length === 0 ? (
               <div className="empty-state">
                 <p className="muted">No solved puzzles yet.</p>
-                <Link href="/play" className="wood-btn">Play Today's Puzzle</Link>
+                <Link href="/play" className="wood-btn">Play Today&apos;s Puzzle</Link>
               </div>
             ) : (
               <div className="list-grid compact-list">
@@ -169,7 +170,7 @@ export function LeaderboardClient() {
             )}
 
             {session && !online && (
-              <p className="muted">You're offline. Connect to the internet to view global rankings.</p>
+              <p className="muted">You&apos;re offline. Connect to the internet to view global rankings.</p>
             )}
 
             {canShowGlobal && globalMessage && (
