@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
+import { BottomNav } from '@/components/bottom-nav';
 import { formatDateKey } from '@/lib/core/date';
 import { calculateBestStreak, calculateStreak } from '@/lib/core/streak';
 import { getAllDailyActivity, getAllLevelRuns } from '@/lib/storage/db';
@@ -91,11 +92,13 @@ export function HomeClient() {
         <span className="streak-label">🔥 Day streak</span>
         {streak === 0 && (
           <p className="muted" style={{ marginTop: 8, fontSize: '0.82rem' }}>
+            Play today to start your streak!
             Play today&apos;s puzzle to ignite your streak!
           </p>
         )}
         {streak > 0 && bestStreak > streak && (
           <p className="muted" style={{ marginTop: 6, fontSize: '0.78rem' }}>
+            Best: {bestStreak} days
             Personal best: {bestStreak} days
           </p>
         )}
@@ -107,6 +110,13 @@ export function HomeClient() {
       </section>
 
       {/* ── Today's puzzle CTA ── */}
+      <div className="daily-cta">
+        <h2 style={{ marginBottom: 4 }}>
+          {todaySolved ? '✅ Completed!' : "Today's Puzzle"}
+        </h2>
+        <span className="daily-date">{today}</span>
+        {todaySolved ? (
+          <div className="action-row" style={{ justifyContent: 'center' }}>
       <div className="daily-cta" style={{ marginBottom: 12 }}>
         <div className="label-chip" style={{ marginBottom: 8 }}>
           {todaySolved ? 'Completed ✓' : 'Daily Challenge'}
@@ -121,6 +131,7 @@ export function HomeClient() {
             <Link href="/play" className="ghost-btn">Replay</Link>
           </div>
         ) : (
+          <Link href="/play" className="wood-btn" style={{ display: 'inline-block', marginTop: 0 }}>
           <Link href="/play" className="wood-btn"
             style={{ display: 'inline-block', marginTop: 10 }}>
             Play Now →
@@ -133,6 +144,15 @@ export function HomeClient() {
         <div className="kpi-card">
           <span className="kpi-value">{totalSolves}</span>
           <span className="kpi-label">Solved</span>
+
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-value">{bestStreak}</span>
+          <span className="kpi-label">Best streak</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-value">{starCount}</span>
+          <span className="kpi-label">Stars</span>
         </div>
         <div className="kpi-card">
           <span className="kpi-value">{bestStreak}</span>
@@ -145,8 +165,12 @@ export function HomeClient() {
       </div>
 
       {/* ── Game modes ── */}
+      <section className="panel" style={{ marginBottom: 10 }}>
+        <h2 style={{ marginTop: 0 }}>Play Modes</h2>
+
       <section className="panel" style={{ marginBottom: 12 }}>
         <h2 style={{ marginTop: 0, marginBottom: 12 }}>Play Modes</h2>
+
         <div className="mode-grid">
           <Link href="/play" style={{ textDecoration: 'none' }}>
             <article style={{ cursor: 'pointer' }}>
@@ -185,6 +209,10 @@ export function HomeClient() {
             </article>
           </Link>
         </div>
+        <div className="action-row" style={{ marginTop: 12 }}>
+          <Link href="/play" className="wood-btn">Daily Puzzle</Link>
+          <Link href="/levels" className="ghost-btn">Campaign (Lvl {nextLevel})</Link>
+          <Link href="/leaderboard" className="ghost-btn">Leaderboard</Link>
         <div className="action-row" style={{ marginTop: 14 }}>
           <Link href="/play" className="wood-btn">Daily Puzzle</Link>
           <Link href="/levels" className="ghost-btn">Campaign (Lvl {nextLevel})</Link>
@@ -228,6 +256,9 @@ export function HomeClient() {
           </div>
         )}
         <div className="progress-track" style={{ marginTop: 12 }}>
+          <span style={{ width: `${Math.min(100, starCount * 3)}%` }} />
+        </div>
+        <p className="muted" style={{ marginTop: 4, fontSize: '0.72rem' }}>{starCount} stars collected</p>
           <span style={{ width: `${starProgress}%` }} />
         </div>
         <p className="muted" style={{ marginTop: 4, fontSize: '0.7rem' }}>

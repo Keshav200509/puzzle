@@ -29,6 +29,17 @@ function isAdjacent(a: GridPosition, b: GridPosition): boolean {
   return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
 }
 
+function tileSvg(tile: Tile, onPath: boolean, onPartial: boolean) {
+  if (tile.kind === 'empty') return null;
+
+  const tunnelW = 34;
+  const glowColor = onPath ? 'rgba(253,230,138,.55)' : onPartial ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.1)';
+
+  if (tile.kind === 'start' || tile.kind === 'end') {
+    const isStart = tile.kind === 'start';
+    const center = isStart ? 'M 50 50 L 100 50' : 'M 0 50 L 50 50';
+    const label = isStart ? 'S' : 'E';
+    const labelColor = isStart ? '#10b981' : '#f59e0b';
 // Unique gradient IDs per render to avoid conflicts across multiple boards on the same page
 let gradientCounter = 0;
 
@@ -55,6 +66,15 @@ function tileSvg(tile: Tile, onPath: boolean, onPartial: boolean, uid: string) {
     return (
       <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden>
         <defs>
+          <linearGradient id={`wood-${tile.kind}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1e3a5f" />
+            <stop offset="100%" stopColor="#0f2040" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="100" height="100" rx="8" fill={`url(#wood-${tile.kind})`} />
+        <path d={center} stroke="#0d1f38" strokeWidth={38} strokeLinecap="round" fill="none" />
+        <path d={center} stroke="#111827" strokeWidth={tunnelW} strokeLinecap="round" fill="none" />
+        <text x="50" y="55" fontSize="20" textAnchor="middle" dominantBaseline="middle" fill={labelColor} fontWeight="800" fontFamily="system-ui">{label}</text>
           <linearGradient id={bgIdS} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%"   stopColor="#d4924a" />
             <stop offset="100%" stopColor="#9a6a28" />
@@ -81,6 +101,19 @@ function tileSvg(tile: Tile, onPath: boolean, onPartial: boolean, uid: string) {
   return (
     <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden>
       <defs>
+        <linearGradient id="wood-pipe" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1a3a5c" />
+          <stop offset="100%" stopColor="#0e2236" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="100" height="100" rx="8" fill="url(#wood-pipe)" />
+      <path d={shape.d} stroke="#0d1f38" strokeWidth={38} strokeLinecap="round" fill="none" />
+      <path d={shape.d} stroke="#1e3a5f" strokeWidth={34} strokeLinecap="round" fill="none" />
+      <path d={shape.d} stroke={glowColor} strokeWidth={10} strokeLinecap="round" fill="none" />
+      {shape.openings.map((edge) => {
+        const p = EDGE[edge];
+        return <circle key={edge} cx={p.x} cy={p.y} r="15" fill="#0d1f38" />;
+      })}
         <linearGradient id={bgId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor={tile.locked ? '#8a6230' : '#c9914a'} />
           <stop offset="100%" stopColor={tile.locked ? '#5a3f1a' : '#9a6a28'} />
@@ -143,11 +176,17 @@ export function PipeGridBoard({
         row.map((tile, colIndex) => {
           const key = `${rowIndex}:${colIndex}`;
           return {
+            tile,
+            rowIndex,
+            colIndex,
             tile, rowIndex, colIndex,
             canMove:
               tile.kind !== 'empty' &&
               !tile.locked &&
               isAdjacent(level.empty, { row: rowIndex, col: colIndex }),
+            onPath: pathSet.has(key),
+            onPartial: !pathSet.has(key) && partialSet.has(key),
+            isHint: hintTile?.row === rowIndex && hintTile?.col === colIndex
             onPath:    pathSet.has(key),
             onPartial: !pathSet.has(key) && partialSet.has(key),
             isHint:    hintTile?.row === rowIndex && hintTile?.col === colIndex
@@ -158,6 +197,16 @@ export function PipeGridBoard({
   );
 
   const unit = 100;
+  const pathD = path
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.col * unit + unit / 2} ${p.row * unit + unit / 2}`)
+    .join(' ');
+  const pathPoints = path
+    .map((p) => `${p.col * unit + unit / 2},${p.row * unit + unit / 2}`)
+    .join(' ');
+
+  return (
+    <div className="pipe-board-shell">
+      <p className="pipe-objective">Slide tiles · Connect START → END · Fewest moves wins</p>
   const pathPoints = path
     .map((p) => `${p.col * unit + unit / 2},${p.row * unit + unit / 2}`)
     .join(' ');
@@ -181,6 +230,9 @@ export function PipeGridBoard({
               canMove ? 'movable' : '',
               onPartial ? 'on-partial-path' : '',
               isHint ? 'hint-tile' : ''
+            ]
+              .filter(Boolean)
+              .join(' ');
             ].filter(Boolean).join(' ');
 
             return (
@@ -192,6 +244,7 @@ export function PipeGridBoard({
                 className={classes}
                 aria-label={`tile-${rowIndex}-${colIndex}`}
               >
+                {tileSvg(tile, onPath, onPartial)}
                 {tileSvg(tile, onPath, onPartial, `${uid}-${rowIndex}-${colIndex}`)}
               </button>
             );
@@ -200,6 +253,8 @@ export function PipeGridBoard({
 
         {path.length > 1 && (
           <svg
+            width="100%"
+            height="100%"
             width="100%" height="100%"
             viewBox={`0 0 ${level.size * unit} ${level.size * unit}`}
             className="pipe-path-overlay"
@@ -208,6 +263,15 @@ export function PipeGridBoard({
               className="path-glow"
               points={pathPoints}
               fill="none"
+              stroke="rgba(250,204,21,.75)"
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d={pathD} fill="none" stroke="transparent" id="solve-route" />
+            <circle r="9" fill="#fde68a" className="route-ball">
+              <animateMotion dur="1.8s" repeatCount="indefinite" rotate="auto">
+                <mpath href="#solve-route" />
               stroke="rgba(250,204,21,.65)"
               strokeWidth="14"
               strokeLinecap="round"
