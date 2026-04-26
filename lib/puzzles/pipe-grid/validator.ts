@@ -20,7 +20,12 @@ const SHAPE_OPENINGS: Record<PipeShape, Direction[]> = {
   'corner-ur': ['up', 'right'],
   'corner-rd': ['right', 'down'],
   'corner-dl': ['down', 'left'],
-  'corner-lu': ['left', 'up']
+  'corner-lu': ['left', 'up'],
+  't-up':    ['up', 'left', 'right'],
+  't-right': ['up', 'right', 'down'],
+  't-down':  ['down', 'left', 'right'],
+  't-left':  ['up', 'left', 'down'],
+  'cross':   ['up', 'right', 'down', 'left']
 };
 
 function getOpenings(tile: Tile): Direction[] {
