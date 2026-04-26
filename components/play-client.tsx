@@ -48,6 +48,14 @@ function pulseFeedback(pattern: number | number[]) {
   navigator.vibrate(pattern);
 }
 
+/** Simulate every legal slide; return the tile whose move maximises the
+ *  number of positions reachable from START. Returns null if no single
+ *  slide improves reachability. */
+function findBestHintTile(level: PipeGridLevel): { row: number; col: number } | null {
+  const baseScore = findReachableFromStart(level).length;
+  let best: { row: number; col: number } | null = null;
+  let bestScore = baseScore;
+
 function findBestHintTile(level: PipeGridLevel): { row: number; col: number } | null {
   const base = findReachableFromStart(level).length;
   let best: { row: number; col: number } | null = null;
@@ -56,6 +64,8 @@ function findBestHintTile(level: PipeGridLevel): { row: number; col: number } | 
     for (let col = 0; col < level.size; col++) {
       const pos = { row, col };
       if (!canSlide(level, pos)) continue;
+      const sim = slideTile(level, pos);
+      const score = findReachableFromStart(sim).length;
       const score = findReachableFromStart(slideTile(level, pos)).length;
       if (score > bestScore) { bestScore = score; best = pos; }
     }
@@ -63,6 +73,12 @@ function findBestHintTile(level: PipeGridLevel): { row: number; col: number } | 
   return best;
 }
 
+function buildShareText(dayKey: string, moves: number, stars: 1 | 2 | 3, secs: number): string {
+  const starStr = ['⭐', '⭐⭐', '⭐⭐⭐'][stars - 1];
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  const timeStr = m > 0 ? `${m}m ${s}s` : `${s}s`;
+  return `The Grid – ${dayKey}\n${starStr} ${moves} moves · ${timeStr}`;
 function buildShareText(name: string, dayKey: string, moves: number, stars: 1|2|3, secs: number): string {
   const starStr = ['⭐','⭐⭐','⭐⭐⭐'][stars - 1];
   const m = Math.floor(secs / 60), s = secs % 60;
@@ -89,6 +105,26 @@ export function PlayClient() {
   const [level, setLevel]         = useState<PipeGridLevel | null>(null);
   const [moves, setMoves]         = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [solved, setSolved] = useState(false);
+  const [score, setScore] = useState(0);
+  const [stars, setStars] = useState<1 | 2 | 3>(1);
+  const [path, setPath] = useState<Array<{ row: number; col: number }>>([]);
+  const [partialPath, setPartialPath] = useState<Array<{ row: number; col: number }>>([]);
+  const [hintTile, setHintTile] = useState<{ row: number; col: number } | null>(null);
+  const [phase, setPhase] = useState<PlayPhase>('briefing');
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  async function loadForDay(dateKey: string) {
+    const fixture =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('fixture')
+        : null;
+    const seed = await createSeedHash(dateKey, SECRET);
+    const fresh = fixture === 'easy-solve' ? createEasySolveFixture() : generatePipeGrid(seed);
+    const progress = await getPuzzleProgress(dateKey);
   const [streak, setStreak]       = useState(0);
   const [weekDays, setWeekDays]   = useState(0);
   const [solved, setSolved]       = useState(false);
@@ -160,6 +196,11 @@ export function PlayClient() {
   }
 
   useEffect(() => {
+    const forcedDay =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('day')
+        : null;
+    setDayKey(forcedDay ?? formatDateKey(new Date()));
     const forced = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('day') : null;
     setDayKey(forced ?? formatDateKey(new Date()));
@@ -171,6 +212,9 @@ export function PlayClient() {
     loadForDay(dayKey).then(async () => {
       if (cancelled) return;
       const activity = await getAllDailyActivity();
+      if (cancelled) return;
+      const mapped = Object.fromEntries(activity.map((e) => [e.date, { solved: e.solved }]));
+      setStreak(calculateStreak(mapped));
       const map = Object.fromEntries(activity.map((e) => [e.date, { solved: e.solved }]));
       setStreak(calculateStreak(map));
       setWeekDays(weekProgress(map));
@@ -233,6 +277,12 @@ export function PlayClient() {
       await clearPuzzleProgress(dayKey);
 
       if (session && navigator.onLine) {
+        syncAllPending({ online: navigator.onLine, signedIn: Boolean(session) }).catch(() => undefined);
+      }
+
+      const activity = await getAllDailyActivity();
+      const mapped = Object.fromEntries(activity.map((e) => [e.date, { solved: e.solved }]));
+      setStreak(calculateStreak(mapped));
         syncAllPending({ online: navigator.onLine, signedIn: Boolean(session) }).catch(() => {});
       }
 
@@ -249,6 +299,14 @@ export function PlayClient() {
 
   async function useHint() {
     if (!level || solved || phase !== 'playing' || hintsUsed >= HINT_LIMIT) return;
+    const nextHints = hintsUsed + 1;
+    setHintsUsed(nextHints);
+
+    const best = findBestHintTile(level);
+    setHintTile(best);
+    setTimeout(() => setHintTile(null), 2500);
+
+    await persist(level, moves, nextHints);
     const next = hintsUsed + 1;
     setHintsUsed(next);
     const tile = findBestHintTile(level);
@@ -259,6 +317,12 @@ export function PlayClient() {
 
   async function restart() {
     await clearPuzzleProgress(dayKey);
+    setScore(0);
+    setStars(1);
+    setSolved(false);
+    setPath([]);
+    setPartialPath([]);
+    setHintTile(null);
     setScore(0); setStars(1); setSolved(false);
     setPath([]); setPartialPath([]); setHintTile(null);
     await loadForDay(dayKey);
@@ -266,11 +330,21 @@ export function PlayClient() {
 
   function startMission() {
     setStartedAt(Date.now());
+    setElapsedSeconds(0);
     setElapsed(0);
     setPhase('playing');
   }
 
   async function shareResult() {
+    const text = buildShareText(dayKey, moves, stars, elapsedSeconds);
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     const text = buildShareText(puzzleName, dayKey, moves, stars, elapsed);
     try {
       if (navigator.share) await navigator.share({ text });
@@ -279,10 +353,16 @@ export function PlayClient() {
   }
 
   const timerLabel = useMemo(() => {
+    const m = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+    const s = (elapsedSeconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }, [elapsedSeconds]);
+
     const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const s = (elapsed % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   }, [elapsed]);
+
 
   const hintsLeft = HINT_LIMIT - hintsUsed;
 
@@ -290,12 +370,23 @@ export function PlayClient() {
     return <main className="page-shell game-page"><p className="muted">Loading today&apos;s puzzle…</p></main>;
   }
 
+
   // Chest icons for reward track (days 1,3,5,7 give chests)
   const chestAt = [1, 3, 5, 7];
+
 
   return (
     <main className="page-shell game-page">
 
+
+      <section className="panel game-brief-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ marginBottom: 2 }}>Daily Puzzle</h1>
+            <p className="muted" style={{ fontSize: '0.78rem' }}>{dayKey} · 🔥 {streak} day streak</p>
+          </div>
+          {phase === 'playing' && (
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
       {/* ── Header ── */}
       <section className="panel game-brief-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -358,6 +449,12 @@ export function PlayClient() {
         hintTile={hintTile}
       />
 
+      <div className="action-row" style={{ justifyContent: 'center' }}>
+        <button
+          className="ghost-btn"
+          onClick={useHint}
+          disabled={hintsLeft === 0 || solved || phase !== 'playing'}
+        >
       {/* ── Controls ── */}
       <div className="action-row" style={{ justifyContent: 'center' }}>
         <button className="ghost-btn" onClick={useHint} disabled={hintsLeft === 0 || solved || phase !== 'playing'}>
@@ -371,6 +468,16 @@ export function PlayClient() {
       {phase === 'briefing' && (
         <div className="modal-overlay">
           <div className="panel modal-card">
+            <h2 style={{ marginTop: 0 }}>Today&apos;s Puzzle</h2>
+            <p className="muted" style={{ marginBottom: 12 }}>{dayKey}</p>
+            <p>Slide tiles into the empty space to connect <strong>S</strong> → <strong>E</strong> through a chain of aligned pipes.</p>
+            <ul style={{ paddingLeft: '1.2rem', color: 'var(--muted)', fontSize: '0.875rem', lineHeight: 1.8 }}>
+              <li>Only tiles <em>adjacent to the blank</em> can slide.</li>
+              <li>Fewer moves = more stars ⭐</li>
+              <li>Amber tiles show your current connected chain.</li>
+              <li>Hints highlight the best tile to move next (green glow).</li>
+            </ul>
+            <button className="wood-btn" style={{ width: '100%', marginTop: 8 }} onClick={startMission}>
             <div className="label-chip" style={{ marginBottom: 8 }}>Daily Challenge</div>
             <h2 style={{ marginTop: 0 }}>Today&apos;s Puzzle</h2>
             <p style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: 4 }}>{puzzleName}</p>
@@ -393,6 +500,10 @@ export function PlayClient() {
       {phase === 'cleared' && (
         <div className="modal-overlay">
           <div className="panel modal-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.2rem', marginBottom: 6 }}>{'⭐'.repeat(stars)}</div>
+            <h2 style={{ marginTop: 0 }}>Puzzle Cleared!</h2>
+
+            <div className="kpi-row" style={{ margin: '14px 0' }}>
             <div style={{ fontSize: '2.4rem', marginBottom: 6 }}>{'⭐'.repeat(stars)}</div>
             <h2 style={{ marginTop: 0 }}>Puzzle Cleared!</h2>
             <p style={{ color: 'var(--accent)', fontWeight: 700, marginBottom: 14 }}>{puzzleName}</p>
@@ -412,6 +523,7 @@ export function PlayClient() {
               </div>
             </div>
 
+            <div className="share-box">{buildShareText(dayKey, moves, stars, elapsedSeconds)}</div>
             <div className="share-box">{buildShareText(puzzleName, dayKey, moves, stars, elapsed)}</div>
 
             <div className="action-row" style={{ justifyContent: 'center' }}>
